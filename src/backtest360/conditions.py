@@ -1,105 +1,129 @@
 """Condition-tree builder helpers.
 
-``C`` provides static factory methods that produce the engine's json-logic tree
-shapes. Leaves reference Indicator ids via ``{"var": "<id>.output"}`` or
-``{"var": "<id>.<col>"}`` notation.
+``C`` produces the engine's ``op/expr`` tree format. Comparison leaves become
+pandas-eval strings; logical nodes use ``op=and|or|not`` with an ``args`` list.
 
 Example::
 
     tree = {
-        "long_entry": C.and_(C.lt("rsi_14", 30), C.gt("close", "sma_50")),
-        "long_exit":  C.gt("rsi_14", 50),
+        "long_entry": C.and_(C.lt("rsi", 30), C.gt("close", "sma_200")),
+        "long_exit":  C.gt("rsi", 70),
         "short_entry": None,
         "short_exit":  None,
     }
+
+Cross-over conditions reference a ``cross_above`` or ``cross_below`` transform
+indicator by its id::
+
+    indicators = [
+        Indicator(id="sma_fast", name="sma", params={"period": 10}, upstream=[]),
+        Indicator(id="sma_slow", name="sma", params={"period": 50}, upstream=[]),
+        Indicator(id="x_above", name="cross_above", params={}, upstream=["sma_fast", "sma_slow"]),
+    ]
+    long_entry = C.cross_above("x_above")   # checks x_above > 0
 """
 
 from __future__ import annotations
 
 from typing import Union
 
-# A leaf operand is either a string indicator ref or a numeric literal.
 _Operand = Union[str, int, float]
 
+_OPS = {"gt": ">", "lt": "<", "ge": ">=", "le": "<=", "eq": "==", "ne": "!="}
 
-def _ref(value: _Operand) -> object:
-    """Wrap a string indicator id in a json-logic var node; pass numbers as-is."""
+
+def _expr_side(value: _Operand) -> str:
+    """Convert an operand to a pandas-eval token."""
     if isinstance(value, str):
-        col = value if "." in value else f"{value}.output"
-        return {"var": col}
-    return value
+        return value
+    return repr(value)
+
+
+def _leaf(left: _Operand, op: str, right: _Operand) -> dict:
+    return {"op": "leaf", "expr": f"{_expr_side(left)} {op} {_expr_side(right)}"}
 
 
 class C:
     """Static condition-tree builder.
 
-    Every method returns a plain dict in the engine's json-logic shape.
+    Every method returns a plain dict in the engine's ``op/expr`` tree shape.
     Methods can be freely nested — the output is just a dict.
     """
 
     # -------------------------------------------------------------------
-    # Comparison leaves
+    # Comparison leaves — produce {"op": "leaf", "expr": "..."}
     # -------------------------------------------------------------------
 
     @staticmethod
     def gt(left: _Operand, right: _Operand) -> dict:
         """left > right"""
-        return {"gt": [_ref(left), _ref(right)]}
+        return _leaf(left, ">", right)
 
     @staticmethod
     def lt(left: _Operand, right: _Operand) -> dict:
         """left < right"""
-        return {"lt": [_ref(left), _ref(right)]}
+        return _leaf(left, "<", right)
 
     @staticmethod
     def ge(left: _Operand, right: _Operand) -> dict:
         """left >= right"""
-        return {"gte": [_ref(left), _ref(right)]}
+        return _leaf(left, ">=", right)
 
     @staticmethod
     def le(left: _Operand, right: _Operand) -> dict:
         """left <= right"""
-        return {"lte": [_ref(left), _ref(right)]}
+        return _leaf(left, "<=", right)
 
     @staticmethod
     def eq(left: _Operand, right: _Operand) -> dict:
         """left == right"""
-        return {"==": [_ref(left), _ref(right)]}
+        return _leaf(left, "==", right)
 
     @staticmethod
     def ne(left: _Operand, right: _Operand) -> dict:
         """left != right"""
-        return {"!=": [_ref(left), _ref(right)]}
+        return _leaf(left, "!=", right)
 
     # -------------------------------------------------------------------
-    # Logical combinators
+    # Logical combinators — produce {"op": "and"|"or"|"not", "args": [...]}
     # -------------------------------------------------------------------
 
     @staticmethod
     def and_(*conditions: dict) -> dict:
         """All conditions must be true."""
-        return {"and": list(conditions)}
+        return {"op": "and", "args": list(conditions)}
 
     @staticmethod
     def or_(*conditions: dict) -> dict:
         """At least one condition must be true."""
-        return {"or": list(conditions)}
+        return {"op": "or", "args": list(conditions)}
 
     @staticmethod
     def not_(condition: dict) -> dict:
         """Condition must be false."""
-        return {"!": condition}
+        return {"op": "not", "args": [condition]}
 
     # -------------------------------------------------------------------
     # Cross-over helpers
+    # Cross-overs are expressed via transform indicators in the engine.
+    # Pass the *id* of a cross_above / cross_below transform indicator;
+    # C checks that the indicator's output fired (> 0).
     # -------------------------------------------------------------------
 
     @staticmethod
-    def cross_above(fast: _Operand, slow: _Operand) -> dict:
-        """fast crosses above slow (fast > slow after being below)."""
-        return {"cross_above": [_ref(fast), _ref(slow)]}
+    def cross_above(indicator_id: str) -> dict:
+        """indicator_id > 0 — fires on the bar the cross_above indicator fired.
+
+        indicator_id must be the ``id`` of a ``cross_above`` transform
+        indicator already declared in ``Strategy.indicators``.
+        """
+        return {"op": "leaf", "expr": f"{indicator_id} > 0"}
 
     @staticmethod
-    def cross_below(fast: _Operand, slow: _Operand) -> dict:
-        """fast crosses below slow (fast < slow after being above)."""
-        return {"cross_below": [_ref(fast), _ref(slow)]}
+    def cross_below(indicator_id: str) -> dict:
+        """indicator_id > 0 — fires on the bar the cross_below indicator fired.
+
+        indicator_id must be the ``id`` of a ``cross_below`` transform
+        indicator already declared in ``Strategy.indicators``.
+        """
+        return {"op": "leaf", "expr": f"{indicator_id} > 0"}
