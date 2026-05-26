@@ -527,3 +527,190 @@ class SignalResult:
             short_entry_fired=_to_series(d.get("short_entry_fired")),
             short_exit_fired=_to_series(d.get("short_exit_fired")),
         )
+
+
+# ---------------------------------------------------------------------------
+# Statistics
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Statistics:
+    """120+ performance metrics returned by the engine.
+
+    All fields are Optional[float | int | str] so that benchmark-only metrics
+    (alpha, beta, capture_ratio, ...) are simply None when no benchmark was supplied.
+    Snake_case names map directly to the engine's FIELD_REGISTRY keys.
+    """
+
+    # Period
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    total_periods: Optional[int] = None
+
+    # Returns & Performance
+    total_return: Optional[float] = None
+    cagr: Optional[float] = None
+    mtd: Optional[float] = None
+    ytd: Optional[float] = None
+    ret_1m: Optional[float] = None
+    ret_3m: Optional[float] = None
+    ret_6m: Optional[float] = None
+    ret_1y: Optional[float] = None
+    ret_3y: Optional[float] = None
+    ret_5y: Optional[float] = None
+    ret_10y: Optional[float] = None
+    exp_ret_avg: Optional[float] = None
+    exp_ret_comp: Optional[float] = None
+    gross_return: Optional[float] = None
+    net_return: Optional[float] = None
+
+    # Risk Metrics
+    vol: Optional[float] = None
+    vol_ann: Optional[float] = None
+    parkinson_vol: Optional[float] = None
+    parkinson_vol_ann: Optional[float] = None
+    yang_zhang_vol: Optional[float] = None
+    yang_zhang_vol_ann: Optional[float] = None
+    max_drawdown: Optional[float] = None
+    length_of_max_dd: Optional[int] = None
+    recovery_of_max_dd: Optional[int] = None
+    longest_dd: Optional[int] = None
+    longest_recovery: Optional[int] = None
+    avg_drawdown: Optional[float] = None
+    avg_dd_length: Optional[int] = None
+    avg_dd_recovery: Optional[int] = None
+    avg_5_worst_dd: Optional[float] = None
+    avg_5_worst_dd_length: Optional[int] = None
+    avg_5_worst_dd_recovery: Optional[int] = None
+    pct_dd_lt_5: Optional[float] = None
+    pct_dd_lt_10: Optional[float] = None
+    var_1pct: Optional[float] = None
+    var_5pct: Optional[float] = None
+    es_1pct: Optional[float] = None
+    es_5pct: Optional[float] = None
+
+    # Risk-Adjusted Returns
+    sharpe_ratio: Optional[float] = None
+    sharpe_se: Optional[float] = None
+    sharpe_t_stat: Optional[float] = None
+    sharpe_p_val: Optional[float] = None
+    sharpe_lo: Optional[float] = None
+    sortino_ratio: Optional[float] = None
+    calmar_ratio: Optional[float] = None
+
+    # Win/Loss Statistics
+    win_rate: Optional[float] = None
+    avg_up_day: Optional[float] = None
+    avg_down_day: Optional[float] = None
+    avg_daily_return: Optional[float] = None
+    reward_to_risk: Optional[float] = None
+    min_win_rate: Optional[float] = None
+    expectancy: Optional[float] = None
+    best_day: Optional[float] = None
+    worst_day: Optional[float] = None
+    best_month: Optional[float] = None
+    worst_month: Optional[float] = None
+    best_year: Optional[float] = None
+    worst_year: Optional[float] = None
+    avg_up_month: Optional[float] = None
+    avg_down_month: Optional[float] = None
+    avg_up_year: Optional[float] = None
+    avg_down_year: Optional[float] = None
+    win_pct_12m: Optional[float] = None
+    win_pct_year: Optional[float] = None
+
+    # Distribution
+    skewness: Optional[float] = None
+    skew_filtered: Optional[float] = None
+    skew_no_outliers: Optional[float] = None
+    skew_winsorized: Optional[float] = None
+    skew_upper_tail: Optional[float] = None
+    skew_lower_tail: Optional[float] = None
+    kurtosis: Optional[float] = None
+    mean: Optional[float] = None
+    upper_tail_mean: Optional[float] = None
+    lower_tail_mean: Optional[float] = None
+    median: Optional[float] = None
+    p10: Optional[float] = None
+    p25: Optional[float] = None
+    p75: Optional[float] = None
+    p90: Optional[float] = None
+
+    # Market Exposure
+    datapoints: Optional[int] = None
+    trading_days: Optional[int] = None
+    trade_pct: Optional[float] = None
+    losing_streak_hist: Optional[int] = None
+    losing_streak: Optional[int] = None
+    kelly: Optional[float] = None
+    half_kelly: Optional[float] = None
+    quarter_kelly: Optional[float] = None
+    days_in_position: Optional[int] = None
+    days_out: Optional[int] = None
+    days_long: Optional[int] = None
+    days_short: Optional[int] = None
+    time_in_market_pct: Optional[float] = None
+    avg_position_size: Optional[float] = None
+    avg_exposure: Optional[float] = None
+    return_per_day_in_market: Optional[float] = None
+    avg_return_in_market: Optional[float] = None
+    avg_return_long_days: Optional[float] = None
+    avg_return_short_days: Optional[float] = None
+    position_source: Optional[str] = None
+
+    # Trade Statistics
+    total_trades: Optional[int] = None
+    winning_trades: Optional[int] = None
+    losing_trades: Optional[int] = None
+    trade_win_rate: Optional[float] = None
+    avg_trade_pnl: Optional[float] = None
+    avg_win_pnl: Optional[float] = None
+    avg_loss_pnl: Optional[float] = None
+    best_trade: Optional[float] = None
+    worst_trade: Optional[float] = None
+    profit_factor: Optional[float] = None
+    avg_holding_days: Optional[float] = None
+    pct_trades_1d: Optional[float] = None
+    avg_ret_per_day_1d: Optional[float] = None
+    total_ret_1d: Optional[float] = None
+    pct_trades_le_2d: Optional[float] = None
+    avg_ret_per_day_le_2d: Optional[float] = None
+    total_ret_le_2d: Optional[float] = None
+    pct_trades_le_3d: Optional[float] = None
+    avg_ret_per_day_le_3d: Optional[float] = None
+    total_ret_le_3d: Optional[float] = None
+    max_consec_wins: Optional[int] = None
+    max_consec_losses: Optional[int] = None
+
+    # Signal Statistics
+    total_signals: Optional[int] = None
+    signal_win_rate: Optional[float] = None
+    avg_signal_pnl: Optional[float] = None
+    best_signal: Optional[float] = None
+    worst_signal: Optional[float] = None
+    signal_profit_factor: Optional[float] = None
+
+    # Cost Summary
+    total_trade_events: Optional[int] = None
+    total_slippage: Optional[float] = None
+    total_fees: Optional[float] = None
+    total_costs: Optional[float] = None
+    costs_as_pct_of_gross: Optional[float] = None
+    avg_cost_per_event: Optional[float] = None
+
+    # Benchmark Metrics (None when no benchmark supplied)
+    beta: Optional[float] = None
+    alpha: Optional[float] = None
+    information_ratio: Optional[float] = None
+    tracking_error: Optional[float] = None
+    up_capture: Optional[float] = None
+    down_capture: Optional[float] = None
+    capture_ratio: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Statistics":
+        known = {k for k in cls.__dataclass_fields__}
+        return cls(**{k: v for k, v in d.items() if k in known})

@@ -21,6 +21,7 @@ from backtest360.dtos import (
     PositionSizing,
     RiskControls,
     SignalResult,
+    Statistics,
     Strategy,
     Trade,
 )
@@ -521,3 +522,59 @@ def test_signal_result_from_dict_all_none():
     sr = SignalResult.from_dict({})
     assert sr.long_entry_fired is None
     assert sr.short_exit_fired is None
+
+
+# ---------------------------------------------------------------------------
+# Statistics
+# ---------------------------------------------------------------------------
+
+def test_statistics_all_defaults_none():
+    s = Statistics()
+    assert s.sharpe_ratio is None
+    assert s.cagr is None
+    assert s.max_drawdown is None
+    assert s.beta is None  # benchmark metric
+
+
+def test_statistics_round_trip_scalars():
+    s = Statistics(
+        total_return=0.25,
+        cagr=0.18,
+        sharpe_ratio=1.42,
+        sortino_ratio=2.1,
+        max_drawdown=-0.12,
+        calmar_ratio=1.5,
+        total_trades=24,
+        win_rate=0.58,
+    )
+    d = s.to_dict()
+    assert d["sharpe_ratio"] == 1.42
+    assert d["total_trades"] == 24
+    assert d["beta"] is None
+    s2 = Statistics.from_dict(d)
+    assert s2.sharpe_ratio == 1.42
+    assert s2.total_trades == 24
+    assert s2.beta is None
+
+
+def test_statistics_from_dict_ignores_unknown_keys():
+    """Additive-only contract: unknown server keys are silently ignored."""
+    d = {"sharpe_ratio": 1.1, "future_metric_not_in_sdk": 42.0}
+    s = Statistics.from_dict(d)
+    assert s.sharpe_ratio == 1.1
+    assert not hasattr(s, "future_metric_not_in_sdk")
+
+
+def test_statistics_benchmark_fields_default_none():
+    s = Statistics(sharpe_ratio=1.0)
+    assert s.alpha is None
+    assert s.beta is None
+    assert s.up_capture is None
+    assert s.capture_ratio is None
+
+
+def test_statistics_field_count():
+    """Verify we have at least 120 fields (the plan's stated count)."""
+    import dataclasses
+    fields = dataclasses.fields(Statistics)
+    assert len(fields) >= 120, f"Expected >= 120 fields, got {len(fields)}"
