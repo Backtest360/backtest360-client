@@ -7,7 +7,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from backtest360.dtos import AssetInfo, ExecutionCosts, ExecutionMode, Indicator, MarketData, PositionSizing, RiskControls
+from backtest360.dtos import AssetInfo, ExecutionCosts, ExecutionMode, Indicator, MarketData, PositionSizing, RiskControls, Strategy
 
 
 # ---------------------------------------------------------------------------
@@ -246,3 +246,71 @@ def test_indicator_with_upstream():
     assert d["upstream"] == ["rsi_14"]
     ind2 = Indicator.from_dict(d)
     assert ind2.upstream == ["rsi_14"]
+
+
+# ---------------------------------------------------------------------------
+# Strategy
+# ---------------------------------------------------------------------------
+
+def _make_strategy() -> Strategy:
+    ind = Indicator(id="rsi_14", name="RSI", params={"lookback": 14})
+    tree = {
+        "long_entry": {"gt": [{"var": "rsi_14.output"}, 30]},
+        "long_exit": {"lt": [{"var": "rsi_14.output"}, 50]},
+        "short_entry": None,
+        "short_exit": None,
+    }
+    return Strategy(
+        name="RSI threshold long",
+        description="Go long when RSI < 30, exit when RSI > 50.",
+        condition_tree=tree,
+        indicators=[ind],
+        requires={"rsi_lookback": {"type": "int", "min": 2}},
+        defaults={"rsi_lookback": 14},
+        locked_params=["rsi_lookback"],
+        tier="customer",
+    )
+
+
+def test_strategy_defaults():
+    s = Strategy()
+    assert s.name == ""
+    assert s.condition_tree is None
+    assert s.indicators == []
+    assert s.precomputed_signals is None
+    assert s.tier == "customer"
+    assert s.locked_params == []
+
+
+def test_strategy_round_trip():
+    s = _make_strategy()
+    d = s.to_dict()
+    assert d["name"] == "RSI threshold long"
+    assert d["condition_tree"]["long_entry"] == {"gt": [{"var": "rsi_14.output"}, 30]}
+    assert len(d["indicators"]) == 1
+    assert d["indicators"][0]["name"] == "RSI"
+    assert d["locked_params"] == ["rsi_lookback"]
+    s2 = Strategy.from_dict(d)
+    assert s2.name == s.name
+    assert isinstance(s2.indicators[0], Indicator)
+    assert s2.indicators[0].name == "RSI"
+    assert s2.locked_params == ["rsi_lookback"]
+
+
+def test_strategy_precomputed_signals_not_in_to_dict():
+    """precomputed_signals is excluded from to_dict (handled separately by client)."""
+    import pandas as pd
+    signals = pd.Series([0, 1, 1, -1, 0], dtype=int)
+    s = Strategy(precomputed_signals=signals)
+    d = s.to_dict()
+    assert "precomputed_signals" not in d
+
+
+def test_strategy_from_dict_handles_indicator_dicts():
+    d = {
+        "name": "test",
+        "indicators": [{"id": "sma_10", "name": "SMA", "params": {"lookback": 10}, "upstream": []}],
+    }
+    s = Strategy.from_dict(d)
+    assert isinstance(s.indicators[0], Indicator)
+    assert s.indicators[0].id == "sma_10"

@@ -219,3 +219,65 @@ class Indicator:
     @classmethod
     def from_dict(cls, d: dict) -> "Indicator":
         return cls(**d)
+
+
+# ---------------------------------------------------------------------------
+# Strategy
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Strategy:
+    """Strategy signal logic — what to trade, not how.
+
+    Two mutually exclusive signal forms (validation is server-side):
+    - condition_tree + indicators: GUI-composable json-logic tree with 4 slots
+      (long_entry, long_exit, short_entry, short_exit) referencing Indicator ids.
+    - precomputed_signals: a pd.Series of {-1, 0, 1} indexed by signal bar.
+
+    requires / defaults / locked_params: two-tier parameter resolution — the
+    server applies these when resolving indicator params at backtest time.
+    """
+
+    name: str = ""
+    description: str = ""
+    condition_tree: Optional[dict] = None
+    indicators: list = field(default_factory=list)     # list[Indicator]
+    precomputed_signals: Optional[object] = None       # pd.Series — not serialized via asdict
+    requires: dict = field(default_factory=dict)
+    defaults: dict = field(default_factory=dict)
+    locked_params: list = field(default_factory=list)  # list[str] — list for JSON compat
+    tier: str = "customer"
+
+    def to_dict(self) -> dict:
+        """Serialize all non-DataFrame/Series fields."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "condition_tree": self.condition_tree,
+            "indicators": [
+                ind.to_dict() if isinstance(ind, Indicator) else ind
+                for ind in self.indicators
+            ],
+            "requires": self.requires,
+            "defaults": self.defaults,
+            "locked_params": list(self.locked_params),
+            "tier": self.tier,
+            # precomputed_signals excluded — wire format handled by BacktestClient
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Strategy":
+        indicators = [
+            Indicator.from_dict(i) if isinstance(i, dict) else i
+            for i in d.get("indicators", [])
+        ]
+        return cls(
+            name=d.get("name", ""),
+            description=d.get("description", ""),
+            condition_tree=d.get("condition_tree"),
+            indicators=indicators,
+            requires=d.get("requires", {}),
+            defaults=d.get("defaults", {}),
+            locked_params=d.get("locked_params", []),
+            tier=d.get("tier", "customer"),
+        )
