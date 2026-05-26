@@ -16,6 +16,7 @@ from backtest360.dtos import (
     ExecutionCosts,
     ExecutionMode,
     Indicator,
+    LatestSignalResult,
     MarketData,
     OffAnchorEvent,
     OffAnchorReport,
@@ -26,6 +27,8 @@ from backtest360.dtos import (
     Statistics,
     Strategy,
     Trade,
+    ValidationIssue,
+    ValidationResult,
 )
 
 
@@ -672,3 +675,77 @@ def test_backtest_result_with_signal_diagnostics():
     assert br.signal_result is not None
     assert isinstance(br.signal_result, SignalResult)
     assert br.signal_result.long_entry_fired is not None
+
+
+# ---------------------------------------------------------------------------
+# ValidationIssue
+# ---------------------------------------------------------------------------
+
+def test_validation_issue_defaults():
+    vi = ValidationIssue()
+    assert vi.code == ""
+    assert vi.message == ""
+    assert vi.field is None
+
+
+def test_validation_issue_round_trip():
+    vi = ValidationIssue(code="INVALID_LOOKBACK", message="RSI lookback must be > 0", field="indicators[0].params.lookback")
+    d = vi.to_dict()
+    assert d["code"] == "INVALID_LOOKBACK"
+    vi2 = ValidationIssue.from_dict(d)
+    assert vi2 == vi
+
+
+# ---------------------------------------------------------------------------
+# ValidationResult
+# ---------------------------------------------------------------------------
+
+def test_validation_result_valid():
+    vr = ValidationResult(valid=True, issues=[])
+    d = vr.to_dict()
+    assert d["valid"] is True
+    assert d["issues"] == []
+    vr2 = ValidationResult.from_dict(d)
+    assert vr2.valid is True
+
+
+def test_validation_result_invalid_round_trip():
+    vi = ValidationIssue(code="ERR", message="bad", field="x")
+    vr = ValidationResult(valid=False, issues=[vi])
+    d = vr.to_dict()
+    vr2 = ValidationResult.from_dict(d)
+    assert vr2.valid is False
+    assert len(vr2.issues) == 1
+    assert isinstance(vr2.issues[0], ValidationIssue)
+    assert vr2.issues[0].code == "ERR"
+
+
+# ---------------------------------------------------------------------------
+# LatestSignalResult
+# ---------------------------------------------------------------------------
+
+def test_latest_signal_result_defaults():
+    ls = LatestSignalResult()
+    assert ls.signal == 0
+    assert ls.bar_timestamp is None
+    assert ls.warmup_bars_used is None
+
+
+def test_latest_signal_result_round_trip():
+    ls = LatestSignalResult(
+        signal=1,
+        bar_timestamp="2024-06-01T00:00:00+00:00",
+        long_entry_fired=True,
+        long_exit_fired=False,
+        short_entry_fired=False,
+        short_exit_fired=False,
+        warmup_bars_used=14,
+        created_at="2024-06-01T10:00:00+00:00",
+    )
+    d = ls.to_dict()
+    assert d["signal"] == 1
+    assert d["warmup_bars_used"] == 14
+    ls2 = LatestSignalResult.from_dict(d)
+    assert ls2.signal == 1
+    assert ls2.long_entry_fired is True
+    assert ls2.warmup_bars_used == 14

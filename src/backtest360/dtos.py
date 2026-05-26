@@ -796,3 +796,85 @@ class BacktestResult:
             if d.get("signal_diagnostics") else None
         )
         return cls(run_result=run_result, statistics=statistics, signal_result=signal_result)
+
+
+# ---------------------------------------------------------------------------
+# ValidationIssue
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ValidationIssue:
+    """A single validation finding on a strategy or config.
+
+    Distinct from the SDK ``ValidationError`` exception class — this is a
+    data object returned inside ``ValidationResult``, not an exception.
+    """
+
+    code: str = ""
+    message: str = ""
+    field: Optional[str] = None     # which field triggered the issue, if known
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ValidationIssue":
+        return cls(
+            code=d.get("code", ""),
+            message=d.get("message", ""),
+            field=d.get("field"),
+        )
+
+
+# ---------------------------------------------------------------------------
+# ValidationResult
+# ---------------------------------------------------------------------------
+
+@dataclass
+class ValidationResult:
+    """Output of BacktestClient.validate_strategy()."""
+
+    valid: bool = True
+    issues: list = field(default_factory=list)    # list[ValidationIssue]
+
+    def to_dict(self) -> dict:
+        return {
+            "valid": self.valid,
+            "issues": [
+                i.to_dict() if isinstance(i, ValidationIssue) else i
+                for i in self.issues
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ValidationResult":
+        issues = [
+            ValidationIssue.from_dict(i) if isinstance(i, dict) else i
+            for i in d.get("issues", [])
+        ]
+        return cls(valid=d.get("valid", True), issues=issues)
+
+
+# ---------------------------------------------------------------------------
+# LatestSignalResult
+# ---------------------------------------------------------------------------
+
+@dataclass
+class LatestSignalResult:
+    """Output of BacktestClient.latest_signal()."""
+
+    signal: int = 0                            # {-1, 0, 1}
+    bar_timestamp: Optional[str] = None        # ISO timestamp of the last signal bar
+    long_entry_fired: Optional[bool] = None
+    long_exit_fired: Optional[bool] = None
+    short_entry_fired: Optional[bool] = None
+    short_exit_fired: Optional[bool] = None
+    warmup_bars_used: Optional[int] = None
+    created_at: Optional[str] = None          # ISO timestamp — when the signal was computed
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "LatestSignalResult":
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
