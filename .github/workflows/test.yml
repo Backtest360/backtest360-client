@@ -30,7 +30,7 @@ jobs:
 
       - name: Install (pinned pandas)
         if: matrix.pandas-version != 'latest'
-        run: pip install -e ".[dev]" "pandas==${{ matrix.pandas-version }}"
+        run: pip install -e ".[dev]" "pandas==${{ matrix.pandas-version }}" "numpy<2.0"
 
       - name: Install (latest pandas)
         if: matrix.pandas-version == 'latest'
