@@ -73,7 +73,13 @@ def test_engine_error_no_extras():
 
 
 def test_all_exceptions_are_subclass_of_backtest_error():
-    for cls in (AuthenticationError, QuotaExceededError, RateLimitError, ValidationError, EngineError):
+    for cls in (
+        AuthenticationError,
+        QuotaExceededError,
+        RateLimitError,
+        ValidationError,
+        EngineError,
+    ):
         assert issubclass(cls, BacktestError), f"{cls.__name__} must subclass BacktestError"
 
 

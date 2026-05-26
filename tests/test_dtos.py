@@ -2,10 +2,9 @@
 
 from dataclasses import asdict
 
-import pytest
-
 import numpy as np
 import pandas as pd
+import pytest
 
 from backtest360.dtos import (
     AssetInfo,
@@ -31,10 +30,10 @@ from backtest360.dtos import (
     ValidationResult,
 )
 
-
 # ---------------------------------------------------------------------------
 # ExecutionMode
 # ---------------------------------------------------------------------------
+
 
 def test_execution_mode_defaults():
     em = ExecutionMode()
@@ -60,6 +59,7 @@ def test_execution_mode_asdict():
 # ExecutionCosts
 # ---------------------------------------------------------------------------
 
+
 def test_execution_costs_defaults():
     ec = ExecutionCosts()
     assert ec.slippage_bps == 0.0
@@ -69,7 +69,9 @@ def test_execution_costs_defaults():
 
 
 def test_execution_costs_round_trip():
-    ec = ExecutionCosts(slippage_bps=5.0, fee_pct=0.001, vol_scaled_slippage=True, vol_slippage_lookback=30)
+    ec = ExecutionCosts(
+        slippage_bps=5.0, fee_pct=0.001, vol_scaled_slippage=True, vol_slippage_lookback=30
+    )
     d = ec.to_dict()
     assert d == {
         "slippage_bps": 5.0,
@@ -84,6 +86,7 @@ def test_execution_costs_round_trip():
 # ---------------------------------------------------------------------------
 # RiskControls
 # ---------------------------------------------------------------------------
+
 
 def test_risk_controls_defaults():
     rc = RiskControls()
@@ -123,6 +126,7 @@ def test_risk_controls_none_fields_serialize():
 # PositionSizing
 # ---------------------------------------------------------------------------
 
+
 def test_position_sizing_defaults():
     ps = PositionSizing()
     assert ps.position_weight == 1.0
@@ -132,7 +136,9 @@ def test_position_sizing_defaults():
 
 
 def test_position_sizing_round_trip():
-    ps = PositionSizing(position_weight=0.5, vol_target=0.15, vol_target_lookback=60, leverage_limit=2.0)
+    ps = PositionSizing(
+        position_weight=0.5, vol_target=0.15, vol_target_lookback=60, leverage_limit=2.0
+    )
     d = ps.to_dict()
     assert d == {
         "position_weight": 0.5,
@@ -148,6 +154,7 @@ def test_position_sizing_round_trip():
 # AssetInfo
 # ---------------------------------------------------------------------------
 
+
 def test_asset_info_defaults():
     ai = AssetInfo()
     assert ai.ticker == "UNKNOWN"
@@ -159,12 +166,22 @@ def test_asset_info_defaults():
 
 
 def test_asset_info_round_trip():
-    ai = AssetInfo(ticker="SPY", name="SPDR S&P 500 ETF", asset_class="stocks",
-                   exchange="NYSE", currency="USD", active=True)
+    ai = AssetInfo(
+        ticker="SPY",
+        name="SPDR S&P 500 ETF",
+        asset_class="stocks",
+        exchange="NYSE",
+        currency="USD",
+        active=True,
+    )
     d = ai.to_dict()
     assert d == {
-        "ticker": "SPY", "name": "SPDR S&P 500 ETF", "asset_class": "stocks",
-        "exchange": "NYSE", "currency": "USD", "active": True,
+        "ticker": "SPY",
+        "name": "SPDR S&P 500 ETF",
+        "asset_class": "stocks",
+        "exchange": "NYSE",
+        "currency": "USD",
+        "active": True,
     }
     ai2 = AssetInfo.from_dict(d)
     assert ai2 == ai
@@ -182,10 +199,13 @@ def test_asset_info_bare_constructor_is_legal():
 # MarketData
 # ---------------------------------------------------------------------------
 
+
 def _make_ohlcv(n: int = 10) -> pd.DataFrame:
     idx = pd.date_range("2024-01-02", periods=n, freq="B", tz="UTC")
     c = 100.0 + np.arange(n, dtype=float)
-    return pd.DataFrame({"open": c, "high": c + 0.5, "low": c - 0.5, "close": c, "volume": 1000.0}, index=idx)
+    return pd.DataFrame(
+        {"open": c, "high": c + 0.5, "low": c - 0.5, "close": c, "volume": 1000.0}, index=idx
+    )
 
 
 def test_market_data_bare_constructor():
@@ -276,7 +296,9 @@ def test_market_data_load_hourly_fixture():
     """load() detects hourly frequency from hourly-spaced data."""
     idx = pd.date_range("2024-01-02", periods=1000, freq="h", tz="UTC")
     c = 100.0 + np.arange(1000, dtype=float) * 0.01
-    df = pd.DataFrame({"open": c, "high": c + 0.5, "low": c - 0.5, "close": c, "volume": 1000.0}, index=idx)
+    df = pd.DataFrame(
+        {"open": c, "high": c + 0.5, "low": c - 0.5, "close": c, "volume": 1000.0}, index=idx
+    )
     md = MarketData()
     md.load(df)
     assert md.bar_frequency == "hourly"
@@ -297,6 +319,7 @@ def test_market_data_load_bad_prices_detected():
 # ---------------------------------------------------------------------------
 # Indicator
 # ---------------------------------------------------------------------------
+
 
 def test_indicator_defaults():
     ind = Indicator()
@@ -325,6 +348,7 @@ def test_indicator_with_upstream():
 # ---------------------------------------------------------------------------
 # Strategy
 # ---------------------------------------------------------------------------
+
 
 def _make_strategy() -> Strategy:
     ind = Indicator(id="rsi_14", name="RSI", params={"lookback": 14})
@@ -374,6 +398,7 @@ def test_strategy_round_trip():
 def test_strategy_precomputed_signals_not_in_to_dict():
     """precomputed_signals is excluded from to_dict (handled separately by client)."""
     import pandas as pd
+
     signals = pd.Series([0, 1, 1, -1, 0], dtype=int)
     s = Strategy(precomputed_signals=signals)
     d = s.to_dict()
@@ -393,6 +418,7 @@ def test_strategy_from_dict_handles_indicator_dicts():
 # ---------------------------------------------------------------------------
 # BacktestConfig
 # ---------------------------------------------------------------------------
+
 
 def test_backtest_config_defaults():
     bc = BacktestConfig()
@@ -457,6 +483,7 @@ def test_backtest_config_has_no_strategy_field():
 # Trade
 # ---------------------------------------------------------------------------
 
+
 def test_trade_defaults():
     t = Trade()
     assert t.entry_bar == 0
@@ -467,10 +494,18 @@ def test_trade_defaults():
 
 def test_trade_round_trip():
     t = Trade(
-        entry_bar=5, entry_date="2024-01-08T00:00:00+00:00", direction=1,
-        entry_price=101.0, exit_bar=10, exit_date="2024-01-15T00:00:00+00:00",
-        exit_price=105.0, exit_reason="exit_signal", holding_bars=5,
-        return_gross=0.038, return_net=0.035, cumulative_pnl=0.035,
+        entry_bar=5,
+        entry_date="2024-01-08T00:00:00+00:00",
+        direction=1,
+        entry_price=101.0,
+        exit_bar=10,
+        exit_date="2024-01-15T00:00:00+00:00",
+        exit_price=105.0,
+        exit_reason="exit_signal",
+        holding_bars=5,
+        return_gross=0.038,
+        return_net=0.035,
+        cumulative_pnl=0.035,
     )
     d = t.to_dict()
     assert d["direction"] == 1
@@ -482,6 +517,7 @@ def test_trade_round_trip():
 # ---------------------------------------------------------------------------
 # BadDataEntry
 # ---------------------------------------------------------------------------
+
 
 def test_bad_data_entry_round_trip():
     bde = BadDataEntry(bar_index=42, bar_state="HOLD", reason="start=nan")
@@ -495,10 +531,14 @@ def test_bad_data_entry_round_trip():
 # OffAnchorEvent
 # ---------------------------------------------------------------------------
 
+
 def test_off_anchor_event_round_trip():
     ev = OffAnchorEvent(
-        bar_idx=7, anchor="open", target_hour=9.5,
-        timestamp="2024-01-08T09:30:00+00:00", chosen_idx=0,
+        bar_idx=7,
+        anchor="open",
+        target_hour=9.5,
+        timestamp="2024-01-08T09:30:00+00:00",
+        chosen_idx=0,
     )
     d = ev.to_dict()
     assert d["anchor"] == "open"
@@ -509,6 +549,7 @@ def test_off_anchor_event_round_trip():
 # ---------------------------------------------------------------------------
 # BadDataReport
 # ---------------------------------------------------------------------------
+
 
 def test_bad_data_report_empty():
     r = BadDataReport()
@@ -533,6 +574,7 @@ def test_bad_data_report_round_trip():
 # OffAnchorReport
 # ---------------------------------------------------------------------------
 
+
 def test_off_anchor_report_empty():
     r = OffAnchorReport()
     assert r.open_count == 0
@@ -554,6 +596,7 @@ def test_off_anchor_report_round_trip():
 # ---------------------------------------------------------------------------
 # SignalResult
 # ---------------------------------------------------------------------------
+
 
 def test_signal_result_defaults():
     sr = SignalResult()
@@ -584,6 +627,7 @@ def test_signal_result_from_dict_all_none():
 # ---------------------------------------------------------------------------
 # Statistics
 # ---------------------------------------------------------------------------
+
 
 def test_statistics_all_defaults_none():
     s = Statistics()
@@ -633,6 +677,7 @@ def test_statistics_benchmark_fields_default_none():
 def test_statistics_field_count():
     """Verify we have at least 120 fields (the plan's stated count)."""
     import dataclasses
+
     fields = dataclasses.fields(Statistics)
     assert len(fields) >= 120, f"Expected >= 120 fields, got {len(fields)}"
 
@@ -640,6 +685,7 @@ def test_statistics_field_count():
 # ---------------------------------------------------------------------------
 # RunResult
 # ---------------------------------------------------------------------------
+
 
 def test_run_result_defaults():
     rr = RunResult()
@@ -653,10 +699,17 @@ def test_run_result_from_dict_minimal():
     d = {
         "trades": [
             {
-                "entry_bar": 0, "entry_date": None, "direction": 1,
-                "entry_price": 100.0, "exit_bar": 5, "exit_date": None,
-                "exit_price": 105.0, "exit_reason": "exit_signal",
-                "holding_bars": 5, "return_gross": 0.05, "return_net": 0.048,
+                "entry_bar": 0,
+                "entry_date": None,
+                "direction": 1,
+                "entry_price": 100.0,
+                "exit_bar": 5,
+                "exit_date": None,
+                "exit_price": 105.0,
+                "exit_reason": "exit_signal",
+                "holding_bars": 5,
+                "return_gross": 0.05,
+                "return_net": 0.048,
                 "cumulative_pnl": 0.048,
             }
         ],
@@ -686,6 +739,7 @@ def test_run_result_from_dict_with_series():
 # ---------------------------------------------------------------------------
 # BacktestResult
 # ---------------------------------------------------------------------------
+
 
 def test_backtest_result_defaults():
     br = BacktestResult()
@@ -733,6 +787,7 @@ def test_backtest_result_with_signal_diagnostics():
 # ValidationIssue
 # ---------------------------------------------------------------------------
 
+
 def test_validation_issue_defaults():
     vi = ValidationIssue()
     assert vi.code == ""
@@ -741,7 +796,11 @@ def test_validation_issue_defaults():
 
 
 def test_validation_issue_round_trip():
-    vi = ValidationIssue(code="INVALID_LOOKBACK", message="RSI lookback must be > 0", field="indicators[0].params.lookback")
+    vi = ValidationIssue(
+        code="INVALID_LOOKBACK",
+        message="RSI lookback must be > 0",
+        field="indicators[0].params.lookback",
+    )
     d = vi.to_dict()
     assert d["code"] == "INVALID_LOOKBACK"
     vi2 = ValidationIssue.from_dict(d)
@@ -751,6 +810,7 @@ def test_validation_issue_round_trip():
 # ---------------------------------------------------------------------------
 # ValidationResult
 # ---------------------------------------------------------------------------
+
 
 def test_validation_result_valid():
     vr = ValidationResult(valid=True, issues=[])
@@ -775,6 +835,7 @@ def test_validation_result_invalid_round_trip():
 # ---------------------------------------------------------------------------
 # LatestSignalResult
 # ---------------------------------------------------------------------------
+
 
 def test_latest_signal_result_defaults():
     ls = LatestSignalResult()

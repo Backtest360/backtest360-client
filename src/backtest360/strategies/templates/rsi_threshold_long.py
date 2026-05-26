@@ -40,10 +40,10 @@ def rsi_threshold_long(
             Indicator(id="rsi", name="rsi", params={"period": period}, upstream=[]),
         ],
         condition_tree={
-            "long_entry":  {"op": "leaf", "expr": f"rsi < {entry_threshold}"},
-            "long_exit":   {"op": "leaf", "expr": f"rsi > {exit_threshold}"},
+            "long_entry": {"op": "leaf", "expr": f"rsi < {entry_threshold}"},
+            "long_exit": {"op": "leaf", "expr": f"rsi > {exit_threshold}"},
             "short_entry": None,
-            "short_exit":  None,
+            "short_exit": None,
         },
         defaults={"open_hour": 9.5, "close_hour": 16.0},
     )

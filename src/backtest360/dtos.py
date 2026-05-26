@@ -7,14 +7,13 @@ Round-trip serialization (asdict + reconstruct) is supported for all non-DataFra
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Optional
 
 import pandas as pd
-
 
 # ---------------------------------------------------------------------------
 # ExecutionMode
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ExecutionMode:
@@ -33,13 +32,14 @@ class ExecutionMode:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ExecutionMode":
+    def from_dict(cls, d: dict) -> ExecutionMode:
         return cls(**d)
 
 
 # ---------------------------------------------------------------------------
 # ExecutionCosts
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ExecutionCosts:
@@ -60,7 +60,7 @@ class ExecutionCosts:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ExecutionCosts":
+    def from_dict(cls, d: dict) -> ExecutionCosts:
         return cls(**d)
 
 
@@ -68,36 +68,38 @@ class ExecutionCosts:
 # RiskControls
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class RiskControls:
     """Per-strategy risk controls applied inside the backtest loop.
 
     stop_type:           stop-loss type: 'fixed', 'trailing', 'atr', 'trailing_atr', or None.
-    stop_value:          for fixed/trailing, the percentage loss; for atr/trailing_atr, ATR multiplier.
+    stop_value:          percentage loss (fixed/trailing) or ATR multiplier (atr/trailing_atr).
     stop_atr_period:     ATR period (only when stop_type is 'atr' or 'trailing_atr').
     stop_reentry:        reentry rule after stop: 'immediate', 'next_signal', 'cooldown'.
     stop_cooldown_bars:  bars to wait when stop_reentry='cooldown'.
     max_drawdown_limit:  halt trading when cumulative drawdown exceeds this fraction.
     """
 
-    stop_type: Optional[str] = None
-    stop_value: Optional[float] = None
+    stop_type: str | None = None
+    stop_value: float | None = None
     stop_atr_period: int = 14
     stop_reentry: str = "immediate"
     stop_cooldown_bars: int = 0
-    max_drawdown_limit: Optional[float] = None
+    max_drawdown_limit: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "RiskControls":
+    def from_dict(cls, d: dict) -> RiskControls:
         return cls(**d)
 
 
 # ---------------------------------------------------------------------------
 # PositionSizing
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class PositionSizing:
@@ -110,21 +112,22 @@ class PositionSizing:
     """
 
     position_weight: float = 1.0
-    vol_target: Optional[float] = None
+    vol_target: float | None = None
     vol_target_lookback: int = 20
-    leverage_limit: Optional[float] = None
+    leverage_limit: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "PositionSizing":
+    def from_dict(cls, d: dict) -> PositionSizing:
         return cls(**d)
 
 
 # ---------------------------------------------------------------------------
 # AssetInfo
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class AssetInfo:
@@ -136,7 +139,7 @@ class AssetInfo:
 
     ticker: str = "UNKNOWN"
     name: str = "UNKNOWN"
-    asset_class: str = "UNKNOWN"   # 'stocks', 'crypto', 'forex', 'indices'
+    asset_class: str = "UNKNOWN"  # 'stocks', 'crypto', 'forex', 'indices'
     exchange: str = "UNKNOWN"
     currency: str = "UNKNOWN"
     active: bool = True
@@ -145,13 +148,14 @@ class AssetInfo:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "AssetInfo":
+    def from_dict(cls, d: dict) -> AssetInfo:
         return cls(**d)
 
 
 # ---------------------------------------------------------------------------
 # MarketData
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class MarketData:
@@ -163,28 +167,28 @@ class MarketData:
     The ``.ts`` property is a thin alias for ``.ohlcv`` — use either name.
     """
 
-    ohlcv: Optional[pd.DataFrame] = None
+    ohlcv: pd.DataFrame | None = None
     asset_info: AssetInfo = field(default_factory=AssetInfo)
-    is_24h: Optional[bool] = None
-    session_open: Optional[float] = None
-    session_close: Optional[float] = None
-    trading_days_per_year: Optional[int] = None
-    bar_frequency: Optional[str] = None
-    source_bars_per_year: Optional[int] = None
+    is_24h: bool | None = None
+    session_open: float | None = None
+    session_close: float | None = None
+    trading_days_per_year: int | None = None
+    bar_frequency: str | None = None
+    source_bars_per_year: int | None = None
     missing_bars: int = 0
     bad_prices: int = 0
     quality_warnings: list = field(default_factory=list)
 
     # .ts is a thin alias over .ohlcv (preserves dataclasses.replace() compat)
     @property
-    def ts(self) -> Optional[pd.DataFrame]:
+    def ts(self) -> pd.DataFrame | None:
         return self.ohlcv
 
     @ts.setter
-    def ts(self, df: Optional[pd.DataFrame]) -> None:
+    def ts(self, df: pd.DataFrame | None) -> None:
         self.ohlcv = df
 
-    def load(self, df: pd.DataFrame) -> "MarketData":
+    def load(self, df: pd.DataFrame) -> MarketData:
         """Populate fields from a raw OHLCV DataFrame via auto-detection.
 
         Runs: bar-frequency detection, market-hours detection,
@@ -228,7 +232,9 @@ class MarketData:
             self.source_bars_per_year = tdpy * session_bars_per_day
 
         missing_bars, bad_prices, warnings = assess_data_quality(
-            df, bar_frequency, self.is_24h,
+            df,
+            bar_frequency,
+            self.is_24h,
             self.session_open or 0.0,
             self.session_close or 0.0,
         )
@@ -242,6 +248,7 @@ class MarketData:
 # ---------------------------------------------------------------------------
 # Indicator
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Indicator:
@@ -263,13 +270,14 @@ class Indicator:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Indicator":
+    def from_dict(cls, d: dict) -> Indicator:
         return cls(**d)
 
 
 # ---------------------------------------------------------------------------
 # Strategy
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class Strategy:
@@ -286,9 +294,9 @@ class Strategy:
 
     name: str = ""
     description: str = ""
-    condition_tree: Optional[dict] = None
-    indicators: list = field(default_factory=list)     # list[Indicator]
-    precomputed_signals: Optional[object] = None       # pd.Series — not serialized via asdict
+    condition_tree: dict | None = None
+    indicators: list = field(default_factory=list)  # list[Indicator]
+    precomputed_signals: object | None = None  # pd.Series — not serialized via asdict
     requires: dict = field(default_factory=dict)
     defaults: dict = field(default_factory=dict)
     locked_params: list = field(default_factory=list)  # list[str] — list for JSON compat
@@ -301,8 +309,7 @@ class Strategy:
             "description": self.description,
             "condition_tree": self.condition_tree,
             "indicators": [
-                ind.to_dict() if isinstance(ind, Indicator) else ind
-                for ind in self.indicators
+                ind.to_dict() if isinstance(ind, Indicator) else ind for ind in self.indicators
             ],
             "requires": self.requires,
             "defaults": self.defaults,
@@ -312,10 +319,9 @@ class Strategy:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Strategy":
+    def from_dict(cls, d: dict) -> Strategy:
         indicators = [
-            Indicator.from_dict(i) if isinstance(i, dict) else i
-            for i in d.get("indicators", [])
+            Indicator.from_dict(i) if isinstance(i, dict) else i for i in d.get("indicators", [])
         ]
         return cls(
             name=d.get("name", ""),
@@ -333,6 +339,7 @@ class Strategy:
 # BacktestConfig
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BacktestConfig:
     """Execution and risk configuration for a backtest — the HOW, not the WHAT.
@@ -346,13 +353,13 @@ class BacktestConfig:
     """
 
     signal_frequency: str = "daily"
-    entry_mode: Optional[ExecutionMode] = None    # None → open/exact
-    exit_mode: Optional[ExecutionMode] = None     # None → close/exact
-    costs: Optional[ExecutionCosts] = None        # None → zero costs
-    risk: Optional[RiskControls] = None           # None → no risk controls
-    sizing: Optional[PositionSizing] = None       # None → full weight
-    open_hour: Optional[float] = None             # None → auto-detected
-    close_hour: Optional[float] = None            # None → auto-detected
+    entry_mode: ExecutionMode | None = None  # None → open/exact
+    exit_mode: ExecutionMode | None = None  # None → close/exact
+    costs: ExecutionCosts | None = None  # None → zero costs
+    risk: RiskControls | None = None  # None → no risk controls
+    sizing: PositionSizing | None = None  # None → full weight
+    open_hour: float | None = None  # None → auto-detected
+    close_hour: float | None = None  # None → auto-detected
     strict_anchors: bool = False
     risk_free_rate: float = 0.0
     on_bad_data: str = "raise"
@@ -379,7 +386,7 @@ class BacktestConfig:
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "BacktestConfig":
+    def from_dict(cls, d: dict) -> BacktestConfig:
         return cls(
             signal_frequency=d.get("signal_frequency", "daily"),
             entry_mode=ExecutionMode.from_dict(d["entry_mode"]) if d.get("entry_mode") else None,
@@ -406,28 +413,29 @@ class BacktestConfig:
 # Trade
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Trade:
     """A single completed trade from the backtest loop."""
 
     entry_bar: int = 0
-    entry_date: Optional[str] = None       # ISO timestamp
-    direction: int = 0                      # +1 long, -1 short
+    entry_date: str | None = None  # ISO timestamp
+    direction: int = 0  # +1 long, -1 short
     entry_price: float = 0.0
     exit_bar: int = 0
-    exit_date: Optional[str] = None        # ISO timestamp
+    exit_date: str | None = None  # ISO timestamp
     exit_price: float = 0.0
-    exit_reason: str = ""                   # 'exit_signal', 'stop', 'flip', 'end_of_data'
+    exit_reason: str = ""  # 'exit_signal', 'stop', 'flip', 'end_of_data'
     holding_bars: int = 0
-    return_gross: float = 0.0              # log return before costs
-    return_net: float = 0.0               # log return after costs
-    cumulative_pnl: float = 0.0           # running sum of return_net to this trade
+    return_gross: float = 0.0  # log return before costs
+    return_net: float = 0.0  # log return after costs
+    cumulative_pnl: float = 0.0  # running sum of return_net to this trade
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Trade":
+    def from_dict(cls, d: dict) -> Trade:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 
@@ -435,19 +443,20 @@ class Trade:
 # BadDataEntry
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BadDataEntry:
     """A single bad-data bar from the backtest loop."""
 
     bar_index: int = 0
-    bar_state: str = ""    # 'FLAT', 'ENTRY', 'HOLD', 'EXIT', 'FLIP'
-    reason: str = ""       # human-readable, e.g. "start=nan" or "end=-5.0"
+    bar_state: str = ""  # 'FLAT', 'ENTRY', 'HOLD', 'EXIT', 'FLIP'
+    reason: str = ""  # human-readable, e.g. "start=nan" or "end=-5.0"
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "BadDataEntry":
+    def from_dict(cls, d: dict) -> BadDataEntry:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 
@@ -455,22 +464,23 @@ class BadDataEntry:
 # OffAnchorEvent
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OffAnchorEvent:
     """A single bar where the configured open/close anchor was missing
     and the lenient fallback (first/last sub-bar) fired."""
 
     bar_idx: int = 0
-    anchor: str = ""        # 'open' or 'close'
+    anchor: str = ""  # 'open' or 'close'
     target_hour: float = 0.0
-    timestamp: Optional[str] = None    # ISO timestamp of the sub-bar group
+    timestamp: str | None = None  # ISO timestamp of the sub-bar group
     chosen_idx: int = 0
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "OffAnchorEvent":
+    def from_dict(cls, d: dict) -> OffAnchorEvent:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 
@@ -478,29 +488,26 @@ class OffAnchorEvent:
 # BadDataReport
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BadDataReport:
     """Summary of bad-data bars encountered during run_backtest()."""
 
     count: int = 0
-    entries: list = field(default_factory=list)    # list[BadDataEntry] (or raw dicts from server)
-    policy: str = ""                               # 'raise' or 'zero'
+    entries: list = field(default_factory=list)  # list[BadDataEntry] (or raw dicts from server)
+    policy: str = ""  # 'raise' or 'zero'
 
     def to_dict(self) -> dict:
         return {
             "count": self.count,
-            "entries": [
-                e.to_dict() if isinstance(e, BadDataEntry) else e
-                for e in self.entries
-            ],
+            "entries": [e.to_dict() if isinstance(e, BadDataEntry) else e for e in self.entries],
             "policy": self.policy,
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "BadDataReport":
+    def from_dict(cls, d: dict) -> BadDataReport:
         entries = [
-            BadDataEntry.from_dict(e) if isinstance(e, dict) else e
-            for e in d.get("entries", [])
+            BadDataEntry.from_dict(e) if isinstance(e, dict) else e for e in d.get("entries", [])
         ]
         return cls(count=d.get("count", 0), entries=entries, policy=d.get("policy", ""))
 
@@ -509,31 +516,28 @@ class BadDataReport:
 # OffAnchorReport
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class OffAnchorReport:
     """Summary of bars where the open/close anchor was missing and the lenient fallback fired."""
 
     open_count: int = 0
     close_count: int = 0
-    events: list = field(default_factory=list)    # list[OffAnchorEvent] (or raw dicts from server)
+    events: list = field(default_factory=list)  # list[OffAnchorEvent] (or raw dicts from server)
     strict: bool = False
 
     def to_dict(self) -> dict:
         return {
             "open_count": self.open_count,
             "close_count": self.close_count,
-            "events": [
-                e.to_dict() if isinstance(e, OffAnchorEvent) else e
-                for e in self.events
-            ],
+            "events": [e.to_dict() if isinstance(e, OffAnchorEvent) else e for e in self.events],
             "strict": self.strict,
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "OffAnchorReport":
+    def from_dict(cls, d: dict) -> OffAnchorReport:
         events = [
-            OffAnchorEvent.from_dict(e) if isinstance(e, dict) else e
-            for e in d.get("events", [])
+            OffAnchorEvent.from_dict(e) if isinstance(e, dict) else e for e in d.get("events", [])
         ]
         return cls(
             open_count=d.get("open_count", 0),
@@ -547,6 +551,7 @@ class OffAnchorReport:
 # SignalResult
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class SignalResult:
     """Diagnostic output of the signal generator.
@@ -555,18 +560,20 @@ class SignalResult:
     Series fields are None by default (omitted from default responses).
     """
 
-    long_entry_fired: Optional[pd.Series] = None
-    long_exit_fired: Optional[pd.Series] = None
-    short_entry_fired: Optional[pd.Series] = None
-    short_exit_fired: Optional[pd.Series] = None
+    long_entry_fired: pd.Series | None = None
+    long_exit_fired: pd.Series | None = None
+    short_entry_fired: pd.Series | None = None
+    short_exit_fired: pd.Series | None = None
 
     @classmethod
-    def from_dict(cls, d: dict) -> "SignalResult":
+    def from_dict(cls, d: dict) -> SignalResult:
         """Reconstruct from the API signal_diagnostics sub-dict."""
-        def _to_series(v: Optional[list]) -> Optional[pd.Series]:
+
+        def _to_series(v: list | None) -> pd.Series | None:
             if v is None:
                 return None
             return pd.Series(v, dtype=bool)
+
         return cls(
             long_entry_fired=_to_series(d.get("long_entry_fired")),
             long_exit_fired=_to_series(d.get("long_exit_fired")),
@@ -579,6 +586,7 @@ class SignalResult:
 # Statistics
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class Statistics:
     """120+ performance metrics returned by the engine.
@@ -589,175 +597,175 @@ class Statistics:
     """
 
     # Period
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
-    total_periods: Optional[int] = None
+    start_date: str | None = None
+    end_date: str | None = None
+    total_periods: int | None = None
 
     # Returns & Performance
-    total_return: Optional[float] = None
-    cagr: Optional[float] = None
-    mtd: Optional[float] = None
-    ytd: Optional[float] = None
-    ret_1m: Optional[float] = None
-    ret_3m: Optional[float] = None
-    ret_6m: Optional[float] = None
-    ret_1y: Optional[float] = None
-    ret_3y: Optional[float] = None
-    ret_5y: Optional[float] = None
-    ret_10y: Optional[float] = None
-    exp_ret_avg: Optional[float] = None
-    exp_ret_comp: Optional[float] = None
-    gross_return: Optional[float] = None
-    net_return: Optional[float] = None
+    total_return: float | None = None
+    cagr: float | None = None
+    mtd: float | None = None
+    ytd: float | None = None
+    ret_1m: float | None = None
+    ret_3m: float | None = None
+    ret_6m: float | None = None
+    ret_1y: float | None = None
+    ret_3y: float | None = None
+    ret_5y: float | None = None
+    ret_10y: float | None = None
+    exp_ret_avg: float | None = None
+    exp_ret_comp: float | None = None
+    gross_return: float | None = None
+    net_return: float | None = None
 
     # Risk Metrics
-    vol: Optional[float] = None
-    vol_ann: Optional[float] = None
-    parkinson_vol: Optional[float] = None
-    parkinson_vol_ann: Optional[float] = None
-    yang_zhang_vol: Optional[float] = None
-    yang_zhang_vol_ann: Optional[float] = None
-    max_drawdown: Optional[float] = None
-    length_of_max_dd: Optional[int] = None
-    recovery_of_max_dd: Optional[int] = None
-    longest_dd: Optional[int] = None
-    longest_recovery: Optional[int] = None
-    avg_drawdown: Optional[float] = None
-    avg_dd_length: Optional[int] = None
-    avg_dd_recovery: Optional[int] = None
-    avg_5_worst_dd: Optional[float] = None
-    avg_5_worst_dd_length: Optional[int] = None
-    avg_5_worst_dd_recovery: Optional[int] = None
-    pct_dd_lt_5: Optional[float] = None
-    pct_dd_lt_10: Optional[float] = None
-    var_1pct: Optional[float] = None
-    var_5pct: Optional[float] = None
-    es_1pct: Optional[float] = None
-    es_5pct: Optional[float] = None
+    vol: float | None = None
+    vol_ann: float | None = None
+    parkinson_vol: float | None = None
+    parkinson_vol_ann: float | None = None
+    yang_zhang_vol: float | None = None
+    yang_zhang_vol_ann: float | None = None
+    max_drawdown: float | None = None
+    length_of_max_dd: int | None = None
+    recovery_of_max_dd: int | None = None
+    longest_dd: int | None = None
+    longest_recovery: int | None = None
+    avg_drawdown: float | None = None
+    avg_dd_length: int | None = None
+    avg_dd_recovery: int | None = None
+    avg_5_worst_dd: float | None = None
+    avg_5_worst_dd_length: int | None = None
+    avg_5_worst_dd_recovery: int | None = None
+    pct_dd_lt_5: float | None = None
+    pct_dd_lt_10: float | None = None
+    var_1pct: float | None = None
+    var_5pct: float | None = None
+    es_1pct: float | None = None
+    es_5pct: float | None = None
 
     # Risk-Adjusted Returns
-    sharpe_ratio: Optional[float] = None
-    sharpe_se: Optional[float] = None
-    sharpe_t_stat: Optional[float] = None
-    sharpe_p_val: Optional[float] = None
-    sharpe_lo: Optional[float] = None
-    sortino_ratio: Optional[float] = None
-    calmar_ratio: Optional[float] = None
+    sharpe_ratio: float | None = None
+    sharpe_se: float | None = None
+    sharpe_t_stat: float | None = None
+    sharpe_p_val: float | None = None
+    sharpe_lo: float | None = None
+    sortino_ratio: float | None = None
+    calmar_ratio: float | None = None
 
     # Win/Loss Statistics
-    win_rate: Optional[float] = None
-    avg_up_day: Optional[float] = None
-    avg_down_day: Optional[float] = None
-    avg_daily_return: Optional[float] = None
-    reward_to_risk: Optional[float] = None
-    min_win_rate: Optional[float] = None
-    expectancy: Optional[float] = None
-    best_day: Optional[float] = None
-    worst_day: Optional[float] = None
-    best_month: Optional[float] = None
-    worst_month: Optional[float] = None
-    best_year: Optional[float] = None
-    worst_year: Optional[float] = None
-    avg_up_month: Optional[float] = None
-    avg_down_month: Optional[float] = None
-    avg_up_year: Optional[float] = None
-    avg_down_year: Optional[float] = None
-    win_pct_12m: Optional[float] = None
-    win_pct_year: Optional[float] = None
+    win_rate: float | None = None
+    avg_up_day: float | None = None
+    avg_down_day: float | None = None
+    avg_daily_return: float | None = None
+    reward_to_risk: float | None = None
+    min_win_rate: float | None = None
+    expectancy: float | None = None
+    best_day: float | None = None
+    worst_day: float | None = None
+    best_month: float | None = None
+    worst_month: float | None = None
+    best_year: float | None = None
+    worst_year: float | None = None
+    avg_up_month: float | None = None
+    avg_down_month: float | None = None
+    avg_up_year: float | None = None
+    avg_down_year: float | None = None
+    win_pct_12m: float | None = None
+    win_pct_year: float | None = None
 
     # Distribution
-    skewness: Optional[float] = None
-    skew_filtered: Optional[float] = None
-    skew_no_outliers: Optional[float] = None
-    skew_winsorized: Optional[float] = None
-    skew_upper_tail: Optional[float] = None
-    skew_lower_tail: Optional[float] = None
-    kurtosis: Optional[float] = None
-    mean: Optional[float] = None
-    upper_tail_mean: Optional[float] = None
-    lower_tail_mean: Optional[float] = None
-    median: Optional[float] = None
-    p10: Optional[float] = None
-    p25: Optional[float] = None
-    p75: Optional[float] = None
-    p90: Optional[float] = None
+    skewness: float | None = None
+    skew_filtered: float | None = None
+    skew_no_outliers: float | None = None
+    skew_winsorized: float | None = None
+    skew_upper_tail: float | None = None
+    skew_lower_tail: float | None = None
+    kurtosis: float | None = None
+    mean: float | None = None
+    upper_tail_mean: float | None = None
+    lower_tail_mean: float | None = None
+    median: float | None = None
+    p10: float | None = None
+    p25: float | None = None
+    p75: float | None = None
+    p90: float | None = None
 
     # Market Exposure
-    datapoints: Optional[int] = None
-    trading_days: Optional[int] = None
-    trade_pct: Optional[float] = None
-    losing_streak_hist: Optional[int] = None
-    losing_streak: Optional[int] = None
-    kelly: Optional[float] = None
-    half_kelly: Optional[float] = None
-    quarter_kelly: Optional[float] = None
-    days_in_position: Optional[int] = None
-    days_out: Optional[int] = None
-    days_long: Optional[int] = None
-    days_short: Optional[int] = None
-    time_in_market_pct: Optional[float] = None
-    avg_position_size: Optional[float] = None
-    avg_exposure: Optional[float] = None
-    return_per_day_in_market: Optional[float] = None
-    avg_return_in_market: Optional[float] = None
-    avg_return_long_days: Optional[float] = None
-    avg_return_short_days: Optional[float] = None
-    position_source: Optional[str] = None
+    datapoints: int | None = None
+    trading_days: int | None = None
+    trade_pct: float | None = None
+    losing_streak_hist: int | None = None
+    losing_streak: int | None = None
+    kelly: float | None = None
+    half_kelly: float | None = None
+    quarter_kelly: float | None = None
+    days_in_position: int | None = None
+    days_out: int | None = None
+    days_long: int | None = None
+    days_short: int | None = None
+    time_in_market_pct: float | None = None
+    avg_position_size: float | None = None
+    avg_exposure: float | None = None
+    return_per_day_in_market: float | None = None
+    avg_return_in_market: float | None = None
+    avg_return_long_days: float | None = None
+    avg_return_short_days: float | None = None
+    position_source: str | None = None
 
     # Trade Statistics
-    total_trades: Optional[int] = None
-    winning_trades: Optional[int] = None
-    losing_trades: Optional[int] = None
-    trade_win_rate: Optional[float] = None
-    avg_trade_pnl: Optional[float] = None
-    avg_win_pnl: Optional[float] = None
-    avg_loss_pnl: Optional[float] = None
-    best_trade: Optional[float] = None
-    worst_trade: Optional[float] = None
-    profit_factor: Optional[float] = None
-    avg_holding_days: Optional[float] = None
-    pct_trades_1d: Optional[float] = None
-    avg_ret_per_day_1d: Optional[float] = None
-    total_ret_1d: Optional[float] = None
-    pct_trades_le_2d: Optional[float] = None
-    avg_ret_per_day_le_2d: Optional[float] = None
-    total_ret_le_2d: Optional[float] = None
-    pct_trades_le_3d: Optional[float] = None
-    avg_ret_per_day_le_3d: Optional[float] = None
-    total_ret_le_3d: Optional[float] = None
-    max_consec_wins: Optional[int] = None
-    max_consec_losses: Optional[int] = None
+    total_trades: int | None = None
+    winning_trades: int | None = None
+    losing_trades: int | None = None
+    trade_win_rate: float | None = None
+    avg_trade_pnl: float | None = None
+    avg_win_pnl: float | None = None
+    avg_loss_pnl: float | None = None
+    best_trade: float | None = None
+    worst_trade: float | None = None
+    profit_factor: float | None = None
+    avg_holding_days: float | None = None
+    pct_trades_1d: float | None = None
+    avg_ret_per_day_1d: float | None = None
+    total_ret_1d: float | None = None
+    pct_trades_le_2d: float | None = None
+    avg_ret_per_day_le_2d: float | None = None
+    total_ret_le_2d: float | None = None
+    pct_trades_le_3d: float | None = None
+    avg_ret_per_day_le_3d: float | None = None
+    total_ret_le_3d: float | None = None
+    max_consec_wins: int | None = None
+    max_consec_losses: int | None = None
 
     # Signal Statistics
-    total_signals: Optional[int] = None
-    signal_win_rate: Optional[float] = None
-    avg_signal_pnl: Optional[float] = None
-    best_signal: Optional[float] = None
-    worst_signal: Optional[float] = None
-    signal_profit_factor: Optional[float] = None
+    total_signals: int | None = None
+    signal_win_rate: float | None = None
+    avg_signal_pnl: float | None = None
+    best_signal: float | None = None
+    worst_signal: float | None = None
+    signal_profit_factor: float | None = None
 
     # Cost Summary
-    total_trade_events: Optional[int] = None
-    total_slippage: Optional[float] = None
-    total_fees: Optional[float] = None
-    total_costs: Optional[float] = None
-    costs_as_pct_of_gross: Optional[float] = None
-    avg_cost_per_event: Optional[float] = None
+    total_trade_events: int | None = None
+    total_slippage: float | None = None
+    total_fees: float | None = None
+    total_costs: float | None = None
+    costs_as_pct_of_gross: float | None = None
+    avg_cost_per_event: float | None = None
 
     # Benchmark Metrics (None when no benchmark supplied)
-    beta: Optional[float] = None
-    alpha: Optional[float] = None
-    information_ratio: Optional[float] = None
-    tracking_error: Optional[float] = None
-    up_capture: Optional[float] = None
-    down_capture: Optional[float] = None
-    capture_ratio: Optional[float] = None
+    beta: float | None = None
+    alpha: float | None = None
+    information_ratio: float | None = None
+    tracking_error: float | None = None
+    up_capture: float | None = None
+    down_capture: float | None = None
+    capture_ratio: float | None = None
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Statistics":
+    def from_dict(cls, d: dict) -> Statistics:
         known = {k for k in cls.__dataclass_fields__}
         return cls(**{k: v for k, v in d.items() if k in known})
 
@@ -765,6 +773,7 @@ class Statistics:
 # ---------------------------------------------------------------------------
 # RunResult
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class RunResult:
@@ -777,33 +786,24 @@ class RunResult:
     populated when include_per_bar_df=True in BacktestConfig.
     """
 
-    trades: list = field(default_factory=list)     # list[Trade]
-    signal_bars_per_year: Optional[int] = None
-    returns: Optional[pd.Series] = None            # net log returns per bar
-    signals: Optional[pd.Series] = None            # {-1, 0, 1} per bar
-    equity: Optional[pd.Series] = None             # cumulative equity curve
-    bad_data: Optional[BadDataReport] = None
-    off_anchors: Optional[OffAnchorReport] = None
+    trades: list = field(default_factory=list)  # list[Trade]
+    signal_bars_per_year: int | None = None
+    returns: pd.Series | None = None  # net log returns per bar
+    signals: pd.Series | None = None  # {-1, 0, 1} per bar
+    equity: pd.Series | None = None  # cumulative equity curve
+    bad_data: BadDataReport | None = None
+    off_anchors: OffAnchorReport | None = None
 
     @classmethod
-    def from_dict(cls, d: dict) -> "RunResult":
-        trades = [
-            Trade.from_dict(t) if isinstance(t, dict) else t
-            for t in d.get("trades", [])
-        ]
+    def from_dict(cls, d: dict) -> RunResult:
+        trades = [Trade.from_dict(t) if isinstance(t, dict) else t for t in d.get("trades", [])]
 
-        def _series(key: str) -> Optional[pd.Series]:
+        def _series(key: str) -> pd.Series | None:
             v = d.get(key)
             return pd.Series(v, dtype=float) if v is not None else None
 
-        bad_data = (
-            BadDataReport.from_dict(d["bad_data"])
-            if d.get("bad_data") else None
-        )
-        off_anchors = (
-            OffAnchorReport.from_dict(d["off_anchors"])
-            if d.get("off_anchors") else None
-        )
+        bad_data = BadDataReport.from_dict(d["bad_data"]) if d.get("bad_data") else None
+        off_anchors = OffAnchorReport.from_dict(d["off_anchors"]) if d.get("off_anchors") else None
         return cls(
             trades=trades,
             signal_bars_per_year=d.get("signal_bars_per_year"),
@@ -819,16 +819,17 @@ class RunResult:
 # BacktestResult
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class BacktestResult:
     """Complete output of a backtest — top-level SDK response object."""
 
-    run_result: Optional[RunResult] = None
-    statistics: Optional[Statistics] = None
-    signal_result: Optional[SignalResult] = None   # None for precomputed signals
+    run_result: RunResult | None = None
+    statistics: Statistics | None = None
+    signal_result: SignalResult | None = None  # None for precomputed signals
 
     @classmethod
-    def from_dict(cls, d: dict) -> "BacktestResult":
+    def from_dict(cls, d: dict) -> BacktestResult:
         # Engine returns flat shape: trades/series/stats at top level (no run_result wrapper).
         series = d.get("series", {})
         run_dict: dict = {
@@ -841,13 +842,9 @@ class BacktestResult:
         if d.get("off_anchors"):
             run_dict["off_anchors"] = d["off_anchors"]
         run_result = RunResult.from_dict(run_dict)
-        statistics = (
-            Statistics.from_dict(d["stats"])
-            if d.get("stats") else None
-        )
+        statistics = Statistics.from_dict(d["stats"]) if d.get("stats") else None
         signal_result = (
-            SignalResult.from_dict(d["signal_diagnostics"])
-            if d.get("signal_diagnostics") else None
+            SignalResult.from_dict(d["signal_diagnostics"]) if d.get("signal_diagnostics") else None
         )
         return cls(run_result=run_result, statistics=statistics, signal_result=signal_result)
 
@@ -855,6 +852,7 @@ class BacktestResult:
 # ---------------------------------------------------------------------------
 # ValidationIssue
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ValidationIssue:
@@ -866,13 +864,13 @@ class ValidationIssue:
 
     code: str = ""
     message: str = ""
-    field: Optional[str] = None     # which field triggered the issue, if known
+    field: str | None = None  # which field triggered the issue, if known
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ValidationIssue":
+    def from_dict(cls, d: dict) -> ValidationIssue:
         return cls(
             code=d.get("code", ""),
             message=d.get("message", ""),
@@ -884,27 +882,24 @@ class ValidationIssue:
 # ValidationResult
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class ValidationResult:
     """Output of BacktestClient.validate_strategy()."""
 
     valid: bool = True
-    issues: list = field(default_factory=list)    # list[ValidationIssue]
+    issues: list = field(default_factory=list)  # list[ValidationIssue]
 
     def to_dict(self) -> dict:
         return {
             "valid": self.valid,
-            "issues": [
-                i.to_dict() if isinstance(i, ValidationIssue) else i
-                for i in self.issues
-            ],
+            "issues": [i.to_dict() if isinstance(i, ValidationIssue) else i for i in self.issues],
         }
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ValidationResult":
+    def from_dict(cls, d: dict) -> ValidationResult:
         issues = [
-            ValidationIssue.from_dict(i) if isinstance(i, dict) else i
-            for i in d.get("issues", [])
+            ValidationIssue.from_dict(i) if isinstance(i, dict) else i for i in d.get("issues", [])
         ]
         return cls(valid=d.get("valid", True), issues=issues)
 
@@ -913,22 +908,23 @@ class ValidationResult:
 # LatestSignalResult
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class LatestSignalResult:
     """Output of BacktestClient.latest_signal()."""
 
-    signal: int = 0                            # {-1, 0, 1}
-    bar_timestamp: Optional[str] = None        # ISO timestamp of the last signal bar
-    long_entry_fired: Optional[bool] = None
-    long_exit_fired: Optional[bool] = None
-    short_entry_fired: Optional[bool] = None
-    short_exit_fired: Optional[bool] = None
-    warmup_bars_used: Optional[int] = None
-    created_at: Optional[str] = None          # ISO timestamp — when the signal was computed
+    signal: int = 0  # {-1, 0, 1}
+    bar_timestamp: str | None = None  # ISO timestamp of the last signal bar
+    long_entry_fired: bool | None = None
+    long_exit_fired: bool | None = None
+    short_entry_fired: bool | None = None
+    short_exit_fired: bool | None = None
+    warmup_bars_used: int | None = None
+    created_at: str | None = None  # ISO timestamp — when the signal was computed
 
     def to_dict(self) -> dict:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict) -> "LatestSignalResult":
+    def from_dict(cls, d: dict) -> LatestSignalResult:
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})

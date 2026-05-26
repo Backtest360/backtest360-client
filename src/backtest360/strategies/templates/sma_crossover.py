@@ -31,14 +31,18 @@ def sma_crossover(fast: int = 10, slow: int = 50) -> Strategy:
         indicators=[
             Indicator(id="sma_fast", name="sma", params={"period": fast}, upstream=[]),
             Indicator(id="sma_slow", name="sma", params={"period": slow}, upstream=[]),
-            Indicator(id="x_above", name="cross_above", params={}, upstream=["sma_fast", "sma_slow"]),
-            Indicator(id="x_below", name="cross_below", params={}, upstream=["sma_fast", "sma_slow"]),
+            Indicator(
+                id="x_above", name="cross_above", params={}, upstream=["sma_fast", "sma_slow"]
+            ),
+            Indicator(
+                id="x_below", name="cross_below", params={}, upstream=["sma_fast", "sma_slow"]
+            ),
         ],
         condition_tree={
-            "long_entry":  {"op": "leaf", "expr": "x_above > 0"},
-            "long_exit":   {"op": "leaf", "expr": "x_below > 0"},
+            "long_entry": {"op": "leaf", "expr": "x_above > 0"},
+            "long_exit": {"op": "leaf", "expr": "x_below > 0"},
             "short_entry": None,
-            "short_exit":  None,
+            "short_exit": None,
         },
         defaults={"open_hour": 9.5, "close_hour": 16.0},
     )

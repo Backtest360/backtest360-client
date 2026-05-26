@@ -25,9 +25,7 @@ indicator by its id::
 
 from __future__ import annotations
 
-from typing import Union
-
-_Operand = Union[str, int, float]
+_Operand = str | int | float
 
 _OPS = {"gt": ">", "lt": "<", "ge": ">=", "le": "<=", "eq": "==", "ne": "!="}
 

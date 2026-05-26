@@ -7,25 +7,23 @@ These are private to the SDK — do not import from user code.
 from __future__ import annotations
 
 from collections import Counter
-from typing import Optional
 
 import numpy as np
 import pandas as pd
-
 
 # ---------------------------------------------------------------------------
 # Bar-frequency table (kept minimal — only the fields needed for detection)
 # ---------------------------------------------------------------------------
 
 _BAR_FREQUENCIES = {
-    "daily":   {"bars_per_day": 1,        "label": "daily"},
-    "4h":      {"bars_per_day": 6,        "label": "4h"},
-    "hourly":  {"bars_per_day": 24,       "label": "hourly"},
-    "30min":   {"bars_per_day": 48,       "label": "30min"},
-    "15min":   {"bars_per_day": 96,       "label": "15min"},
-    "5min":    {"bars_per_day": 288,      "label": "5min"},
-    "1min":    {"bars_per_day": 1440,     "label": "1min"},
-    "weekly":  {"bars_per_day": 1.0 / 7,  "label": "weekly",  "bars_per_year": 52},
+    "daily": {"bars_per_day": 1, "label": "daily"},
+    "4h": {"bars_per_day": 6, "label": "4h"},
+    "hourly": {"bars_per_day": 24, "label": "hourly"},
+    "30min": {"bars_per_day": 48, "label": "30min"},
+    "15min": {"bars_per_day": 96, "label": "15min"},
+    "5min": {"bars_per_day": 288, "label": "5min"},
+    "1min": {"bars_per_day": 1440, "label": "1min"},
+    "weekly": {"bars_per_day": 1.0 / 7, "label": "weekly", "bars_per_year": 52},
     "monthly": {"bars_per_day": 1.0 / 30, "label": "monthly", "bars_per_year": 12},
 }
 
@@ -64,14 +62,19 @@ def detect_bar_frequency(index: pd.DatetimeIndex) -> dict:
 # Market-hours detection
 # ---------------------------------------------------------------------------
 
+
 def detect_market_hours(df: pd.DataFrame) -> dict:
     """Detect 24h vs session and open/close hours from OHLCV data.
 
     Returns dict with: is_24h, detected_open_hour, detected_close_hour, confidence.
     """
     if len(df) < 2:
-        return {"is_24h": True, "confidence": "low",
-                "detected_open_hour": 0.0, "detected_close_hour": 0.0}
+        return {
+            "is_24h": True,
+            "confidence": "low",
+            "detected_open_hour": 0.0,
+            "detected_close_hour": 0.0,
+        }
 
     ts = df.index.to_series()
     all_diffs = ts.diff().dropna()
@@ -91,23 +94,38 @@ def _detect_from_daily_bars(df: pd.DataFrame, confidence: str, sample_days: int)
         weekday_counts = df.index.dayofweek.value_counts()
         has_weekend = 5 in weekday_counts.index or 6 in weekday_counts.index
         if not has_weekend and sample_days >= 14:
-            return {"is_24h": False, "confidence": confidence,
-                    "detected_open_hour": 9.5, "detected_close_hour": 16.0}
-    return {"is_24h": True, "confidence": confidence,
-            "detected_open_hour": 0.0, "detected_close_hour": 0.0}
+            return {
+                "is_24h": False,
+                "confidence": confidence,
+                "detected_open_hour": 9.5,
+                "detected_close_hour": 16.0,
+            }
+    return {
+        "is_24h": True,
+        "confidence": confidence,
+        "detected_open_hour": 0.0,
+        "detected_close_hour": 0.0,
+    }
 
 
 def _detect_from_subbar(
-    df: pd.DataFrame, all_diffs: pd.Series,
-    median_spacing: pd.Timedelta, confidence: str, sample_days: int,
+    df: pd.DataFrame,
+    all_diffs: pd.Series,
+    median_spacing: pd.Timedelta,
+    confidence: str,
+    sample_days: int,
     median_hours: float,
 ) -> dict:
     gap_threshold = median_spacing * 3
     large_gaps = all_diffs[all_diffs > gap_threshold]
 
     if len(large_gaps) < 3:
-        return {"is_24h": True, "confidence": confidence,
-                "detected_open_hour": 0.0, "detected_close_hour": 0.0}
+        return {
+            "is_24h": True,
+            "confidence": confidence,
+            "detected_open_hour": 0.0,
+            "detected_close_hour": 0.0,
+        }
 
     df_index = df.index
     idx_position = {ts: i for i, ts in enumerate(df_index)}
@@ -124,8 +142,12 @@ def _detect_from_subbar(
                 open_hours.append(gap_ts.hour + gap_ts.minute / 60)
 
     if not close_hours or not open_hours:
-        return {"is_24h": True, "confidence": confidence,
-                "detected_open_hour": 0.0, "detected_close_hour": 0.0}
+        return {
+            "is_24h": True,
+            "confidence": confidence,
+            "detected_open_hour": 0.0,
+            "detected_close_hour": 0.0,
+        }
 
     close_mode = Counter(close_hours).most_common(1)[0]
     open_mode = Counter(open_hours).most_common(1)[0]
@@ -134,18 +156,27 @@ def _detect_from_subbar(
 
     if close_consistency > 0.6 and open_consistency > 0.6:
         detected_close = close_mode[0] + median_hours
-        return {"is_24h": False, "confidence": confidence,
-                "detected_open_hour": open_mode[0], "detected_close_hour": detected_close}
+        return {
+            "is_24h": False,
+            "confidence": confidence,
+            "detected_open_hour": open_mode[0],
+            "detected_close_hour": detected_close,
+        }
 
-    return {"is_24h": True, "confidence": confidence,
-            "detected_open_hour": 0.0, "detected_close_hour": 0.0}
+    return {
+        "is_24h": True,
+        "confidence": confidence,
+        "detected_open_hour": 0.0,
+        "detected_close_hour": 0.0,
+    }
 
 
 # ---------------------------------------------------------------------------
 # Trading-days-per-year detection
 # ---------------------------------------------------------------------------
 
-def detect_trading_days_per_year(ohlcv: pd.DataFrame, is_24h: bool) -> Optional[int]:
+
+def detect_trading_days_per_year(ohlcv: pd.DataFrame, is_24h: bool) -> int | None:
     """Auto-detect trading days per year from data density."""
     if is_24h:
         return 365
@@ -170,6 +201,7 @@ def detect_trading_days_per_year(ohlcv: pd.DataFrame, is_24h: bool) -> Optional[
 # ---------------------------------------------------------------------------
 # Data-quality assessment
 # ---------------------------------------------------------------------------
+
 
 def assess_data_quality(
     ohlcv: pd.DataFrame,
@@ -223,8 +255,10 @@ def _count_missing_daily(ohlcv: pd.DataFrame, is_24h: bool) -> int:
 
 
 def _count_missing_intraday(
-    ohlcv: pd.DataFrame, is_24h: bool,
-    session_open: float, session_close: float,
+    ohlcv: pd.DataFrame,
+    is_24h: bool,
+    session_open: float,
+    session_close: float,
 ) -> int:
     diffs = ohlcv.index[1:] - ohlcv.index[:-1]
     median_spacing = pd.Series(diffs).median()

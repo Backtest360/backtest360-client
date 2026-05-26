@@ -27,9 +27,9 @@ def buy_and_hold() -> Strategy:
             Indicator(id="close_prim", name="close", params={}, upstream=[]),
         ],
         condition_tree={
-            "long_entry":  {"op": "leaf", "expr": "close_prim > 0"},
-            "long_exit":   None,
+            "long_entry": {"op": "leaf", "expr": "close_prim > 0"},
+            "long_exit": None,
             "short_entry": None,
-            "short_exit":  None,
+            "short_exit": None,
         },
     )
