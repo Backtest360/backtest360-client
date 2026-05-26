@@ -13,7 +13,6 @@ from __future__ import annotations
 import json
 import os
 from importlib.metadata import PackageNotFoundError, version
-from typing import Optional
 
 import httpx
 
@@ -44,7 +43,7 @@ def _sdk_version() -> str:
         return "0.0.0.dev"
 
 
-def _resolve_api_key(api_key: Optional[str]) -> str:
+def _resolve_api_key(api_key: str | None) -> str:
     if api_key:
         return api_key
     env_key = os.environ.get("BACKTEST360_API_KEY", "")
@@ -84,13 +83,20 @@ def _handle_error(response: httpx.Response) -> None:
     status = response.status_code
 
     if status == 401:
-        raise AuthenticationError(message or "Invalid or revoked API key. Generate a new one at backtest360.com/dashboard.")
+        raise AuthenticationError(
+            message
+            or "Invalid or revoked API key. Generate a new one at backtest360.com/dashboard."
+        )
 
     if status == 403:
         raise AuthenticationError(message or "Your key lacks the required scope for this endpoint.")
 
     if status == 422:
-        issues = [i.get("msg", str(i)) for i in body.get("detail", [])] if isinstance(body.get("detail"), list) else []
+        issues = (
+            [i.get("msg", str(i)) for i in body.get("detail", [])]
+            if isinstance(body.get("detail"), list)
+            else []
+        )
         raise ValidationError(message or "Strategy or config is invalid.", issues=issues)
 
     if status == 426:
@@ -132,7 +138,7 @@ class BacktestClient:
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         base_url: str = _DEFAULT_BASE_URL,
         timeout: float = _TIMEOUT_SECONDS,
     ) -> None:
@@ -171,7 +177,7 @@ class BacktestClient:
         strategy: Strategy,
         config: BacktestConfig,
         market_data: MarketData,
-        benchmark: Optional[MarketData] = None,
+        benchmark: MarketData | None = None,
     ) -> BacktestResult:
         """Run a backtest and return a BacktestResult."""
         body = _build_backtest_body(strategy, config, market_data, benchmark)
@@ -214,7 +220,8 @@ class BacktestClient:
 # Request serialization helpers
 # ---------------------------------------------------------------------------
 
-def _ohlcv_to_wire(df) -> Optional[dict]:
+
+def _ohlcv_to_wire(df) -> dict | None:
     """Serialize a DataFrame to pandas split orient with ISO UTC timestamps."""
     if df is None:
         return None
@@ -225,7 +232,7 @@ def _ohlcv_to_wire(df) -> Optional[dict]:
     }
 
 
-def _ohlcv_to_parallel(df) -> Optional[dict]:
+def _ohlcv_to_parallel(df) -> dict | None:
     """Serialize a DataFrame to parallel-array format expected by the engine."""
     if df is None:
         return None
@@ -250,14 +257,16 @@ def _strategy_to_wire(strategy: Strategy) -> dict:
     """
     d = strategy.to_dict()
     indicators = []
-    for ind in (d.get("indicators") or []):
-        indicators.append({
-            "ref": ind.get("ref") or ind.get("id"),
-            "name": ind["name"],
-            "kind": ind.get("kind", "technical"),
-            "params": ind.get("params") or {},
-            "upstream": ind.get("upstream") or [],
-        })
+    for ind in d.get("indicators") or []:
+        indicators.append(
+            {
+                "ref": ind.get("ref") or ind.get("id"),
+                "name": ind["name"],
+                "kind": ind.get("kind", "technical"),
+                "params": ind.get("params") or {},
+                "upstream": ind.get("upstream") or [],
+            }
+        )
     return {
         "condition_tree": d.get("condition_tree"),
         "indicators": indicators,
@@ -298,8 +307,14 @@ def _config_to_execution(config: BacktestConfig) -> dict:
         exec_dict["vol_slippage_lookback"] = costs.get("vol_slippage_lookback", 20)
     if cfg.get("risk"):
         risk = cfg["risk"]
-        for k in ("stop_type", "stop_value", "stop_atr_period", "stop_reentry",
-                  "stop_cooldown_bars", "max_drawdown_limit"):
+        for k in (
+            "stop_type",
+            "stop_value",
+            "stop_atr_period",
+            "stop_reentry",
+            "stop_cooldown_bars",
+            "max_drawdown_limit",
+        ):
             if risk.get(k) is not None:
                 exec_dict[k] = risk[k]
     if cfg.get("sizing"):
@@ -318,7 +333,7 @@ def _build_backtest_body(
     strategy: Strategy,
     config: BacktestConfig,
     market_data: MarketData,
-    benchmark: Optional[MarketData] = None,
+    benchmark: MarketData | None = None,
 ) -> dict:
     body: dict = {
         "data_source": {"ohlcv": _ohlcv_to_parallel(market_data.ohlcv)},

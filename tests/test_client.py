@@ -9,7 +9,6 @@ import pytest
 
 from backtest360.client import BacktestClient, _handle_error, _ohlcv_to_wire, _resolve_api_key
 from backtest360.dtos import (
-    AssetInfo,
     BacktestConfig,
     BacktestResult,
     LatestSignalResult,
@@ -25,10 +24,10 @@ from backtest360.exceptions import (
     ValidationError,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _mock_response(status_code: int, body: object = None, headers: dict | None = None) -> MagicMock:
     resp = MagicMock()
@@ -50,6 +49,7 @@ def _client(api_key: str = "b360_test_key") -> BacktestClient:
 # _resolve_api_key
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_api_key_explicit():
     assert _resolve_api_key("explicit_key") == "explicit_key"
 
@@ -68,6 +68,7 @@ def test_resolve_api_key_raises_without_key(monkeypatch):
 # ---------------------------------------------------------------------------
 # _handle_error — error mapping table
 # ---------------------------------------------------------------------------
+
 
 def test_handle_error_passthrough_on_2xx():
     _handle_error(_mock_response(200, {"ok": True}))  # no raise
@@ -106,7 +107,11 @@ def test_handle_error_426():
 
 
 def test_handle_error_429_quota():
-    body = {"detail": {"message": "quota exceeded", "code": "QUOTA_EXCEEDED"}, "used": 100, "limit": 50}
+    body = {
+        "detail": {"message": "quota exceeded", "code": "QUOTA_EXCEEDED"},
+        "used": 100,
+        "limit": 50,
+    }
     resp = _mock_response(429, body)
     with pytest.raises(QuotaExceededError) as exc_info:
         _handle_error(resp)
@@ -141,13 +146,13 @@ def test_handle_error_no_body():
 # _ohlcv_to_wire
 # ---------------------------------------------------------------------------
 
+
 def test_ohlcv_to_wire_none():
     assert _ohlcv_to_wire(None) is None
 
 
 def test_ohlcv_to_wire_dataframe():
     import pandas as pd
-    import numpy as np
 
     idx = pd.to_datetime(["2024-01-01", "2024-01-02"])
     df = pd.DataFrame({"open": [1.0, 2.0], "close": [1.1, 2.1]}, index=idx)
@@ -160,6 +165,7 @@ def test_ohlcv_to_wire_dataframe():
 # ---------------------------------------------------------------------------
 # BacktestClient — header contract
 # ---------------------------------------------------------------------------
+
 
 def test_headers_contain_api_key():
     c = _client("b360_test_abc")
@@ -182,11 +188,21 @@ def test_headers_contain_content_type():
 # BacktestClient.backtest
 # ---------------------------------------------------------------------------
 
+
 def _minimal_market_data() -> MarketData:
     import pandas as pd
+
     idx = pd.to_datetime(["2024-01-01", "2024-01-02"])
-    df = pd.DataFrame({"open": [1.0, 2.0], "high": [1.2, 2.2],
-                        "low": [0.9, 1.9], "close": [1.1, 2.1], "volume": [1000, 2000]}, index=idx)
+    df = pd.DataFrame(
+        {
+            "open": [1.0, 2.0],
+            "high": [1.2, 2.2],
+            "low": [0.9, 1.9],
+            "close": [1.1, 2.1],
+            "volume": [1000, 2000],
+        },
+        index=idx,
+    )
     md = MarketData()
     md.ohlcv = df
     return md
@@ -221,7 +237,9 @@ def test_backtest_with_benchmark():
     c = _client()
     body = _backtest_result_body()
     with patch.object(c, "_post", return_value=body["result"]) as mock_post:
-        c.backtest(Strategy(), BacktestConfig(), _minimal_market_data(), benchmark=_minimal_market_data())
+        c.backtest(
+            Strategy(), BacktestConfig(), _minimal_market_data(), benchmark=_minimal_market_data()
+        )
     posted_body = mock_post.call_args[0][1]
     assert "benchmark" in posted_body
 
@@ -229,6 +247,7 @@ def test_backtest_with_benchmark():
 # ---------------------------------------------------------------------------
 # BacktestClient.latest_signal
 # ---------------------------------------------------------------------------
+
 
 def _latest_signal_body() -> dict:
     return {
@@ -258,6 +277,7 @@ def test_latest_signal_calls_post_endpoint():
 # BacktestClient.validate_strategy
 # ---------------------------------------------------------------------------
 
+
 def test_validate_strategy_calls_post_endpoint():
     c = _client()
     resp = {"valid": True, "issues": []}
@@ -272,6 +292,7 @@ def test_validate_strategy_calls_post_endpoint():
 # ---------------------------------------------------------------------------
 # BacktestClient.list_strategies
 # ---------------------------------------------------------------------------
+
 
 def test_list_strategies_returns_list():
     c = _client()
@@ -291,6 +312,7 @@ def test_list_strategies_unwraps_dict_response():
 # BacktestClient.list_indicators
 # ---------------------------------------------------------------------------
 
+
 def test_list_indicators_returns_list():
     c = _client()
     with patch.object(c, "_get", return_value=[{"id": "rsi"}]):
@@ -309,6 +331,7 @@ def test_list_indicators_unwraps_dict_response():
 # BacktestClient.version
 # ---------------------------------------------------------------------------
 
+
 def test_version_calls_get_endpoint():
     c = _client()
     with patch.object(c, "_get", return_value={"engine": "0.5.3"}) as mock_get:
@@ -320,6 +343,7 @@ def test_version_calls_get_endpoint():
 # ---------------------------------------------------------------------------
 # BacktestClient._post / _get — httpx integration (one real mock-httpx call)
 # ---------------------------------------------------------------------------
+
 
 def test_post_sends_json_body():
     c = _client()

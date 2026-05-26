@@ -30,16 +30,20 @@ def donchian_breakout(period: int = 20) -> Strategy:
         ),
         indicators=[
             Indicator(id="high_prim", name="high", params={}, upstream=[]),
-            Indicator(id="low_prim",  name="low",  params={}, upstream=[]),
+            Indicator(id="low_prim", name="low", params={}, upstream=[]),
             Indicator(id="close_prim", name="close", params={}, upstream=[]),
-            Indicator(id="dc_upper", name="rolling_max", params={"period": period}, upstream=["high_prim"]),
-            Indicator(id="dc_lower", name="rolling_min", params={"period": period}, upstream=["low_prim"]),
+            Indicator(
+                id="dc_upper", name="rolling_max", params={"period": period}, upstream=["high_prim"]
+            ),
+            Indicator(
+                id="dc_lower", name="rolling_min", params={"period": period}, upstream=["low_prim"]
+            ),
         ],
         condition_tree={
-            "long_entry":  {"op": "leaf", "expr": "close_prim > dc_upper"},
-            "long_exit":   {"op": "leaf", "expr": "close_prim < dc_lower"},
+            "long_entry": {"op": "leaf", "expr": "close_prim > dc_upper"},
+            "long_exit": {"op": "leaf", "expr": "close_prim < dc_lower"},
             "short_entry": None,
-            "short_exit":  None,
+            "short_exit": None,
         },
         defaults={"open_hour": 9.5, "close_hour": 16.0},
     )

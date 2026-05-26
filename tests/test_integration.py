@@ -11,14 +11,14 @@ Run with:
 """
 
 import os
-import pytest
+
 import numpy as np
 import pandas as pd
+import pytest
 
 from backtest360.client import BacktestClient
 from backtest360.dtos import BacktestConfig, MarketData
 from backtest360.strategies import rsi_threshold_long
-
 
 _ENGINE_URL = os.environ.get("BACKTEST360_ENGINE_URL", "https://api.backtest360.com")
 _API_KEY = os.environ.get("BACKTEST360_API_KEY", "")
@@ -117,25 +117,21 @@ def test_validate_strategy_rsi_threshold_long(client: BacktestClient) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_backtest_returns_result(
-    client: BacktestClient, sample_md: MarketData
-) -> None:
+def test_backtest_returns_result(client: BacktestClient, sample_md: MarketData) -> None:
     result = client.backtest(rsi_threshold_long(), BacktestConfig(), sample_md)
     assert result is not None
     assert result.statistics is not None
 
 
-def test_backtest_statistics_sharpe_is_float(
-    client: BacktestClient, sample_md: MarketData
-) -> None:
+def test_backtest_statistics_sharpe_is_float(client: BacktestClient, sample_md: MarketData) -> None:
     result = client.backtest(rsi_threshold_long(), BacktestConfig(), sample_md)
     sr = result.statistics.sharpe_ratio
-    assert sr is None or isinstance(sr, (int, float)), f"sharpe_ratio should be numeric or None; got {type(sr)}"
+    assert sr is None or isinstance(sr, (int, float)), (
+        f"sharpe_ratio should be numeric or None; got {type(sr)}"
+    )
 
 
-def test_backtest_run_result_has_returns(
-    client: BacktestClient, sample_md: MarketData
-) -> None:
+def test_backtest_run_result_has_returns(client: BacktestClient, sample_md: MarketData) -> None:
     result = client.backtest(rsi_threshold_long(), BacktestConfig(), sample_md)
     assert result.run_result is not None
     assert len(result.run_result.returns) > 0

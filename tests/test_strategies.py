@@ -1,7 +1,5 @@
 """Unit tests for the 4 starter strategy templates."""
 
-import pytest
-
 from backtest360.dtos import Indicator, Strategy
 from backtest360.strategies import (
     buy_and_hold,
@@ -10,10 +8,10 @@ from backtest360.strategies import (
     sma_crossover,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _assert_valid_strategy(s: Strategy) -> None:
     assert isinstance(s, Strategy)
@@ -35,6 +33,7 @@ def _assert_long_only(s: Strategy) -> None:
 # ---------------------------------------------------------------------------
 # rsi_threshold_long
 # ---------------------------------------------------------------------------
+
 
 class TestRsiThresholdLong:
     def test_returns_strategy(self):
@@ -87,6 +86,7 @@ class TestRsiThresholdLong:
 # sma_crossover
 # ---------------------------------------------------------------------------
 
+
 class TestSmaCrossover:
     def test_returns_strategy(self):
         _assert_valid_strategy(sma_crossover())
@@ -130,6 +130,7 @@ class TestSmaCrossover:
 # ---------------------------------------------------------------------------
 # donchian_breakout
 # ---------------------------------------------------------------------------
+
 
 class TestDonchianBreakout:
     def test_returns_strategy(self):
@@ -178,6 +179,7 @@ class TestDonchianBreakout:
 # ---------------------------------------------------------------------------
 # buy_and_hold
 # ---------------------------------------------------------------------------
+
 
 class TestBuyAndHold:
     def test_returns_strategy(self):
