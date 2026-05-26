@@ -10,13 +10,16 @@ import pandas as pd
 from backtest360.dtos import (
     AssetInfo,
     BacktestConfig,
+    BadDataEntry,
     ExecutionCosts,
     ExecutionMode,
     Indicator,
     MarketData,
+    OffAnchorEvent,
     PositionSizing,
     RiskControls,
     Strategy,
+    Trade,
 )
 
 
@@ -387,3 +390,56 @@ def test_backtest_config_round_trip_nested():
 def test_backtest_config_has_no_strategy_field():
     """Strategy is not a field on BacktestConfig — it's passed to backtest() separately."""
     assert not hasattr(BacktestConfig, "strategy")
+
+
+# ---------------------------------------------------------------------------
+# Trade
+# ---------------------------------------------------------------------------
+
+def test_trade_defaults():
+    t = Trade()
+    assert t.entry_bar == 0
+    assert t.direction == 0
+    assert t.exit_reason == ""
+    assert t.cumulative_pnl == 0.0
+
+
+def test_trade_round_trip():
+    t = Trade(
+        entry_bar=5, entry_date="2024-01-08T00:00:00+00:00", direction=1,
+        entry_price=101.0, exit_bar=10, exit_date="2024-01-15T00:00:00+00:00",
+        exit_price=105.0, exit_reason="exit_signal", holding_bars=5,
+        return_gross=0.038, return_net=0.035, cumulative_pnl=0.035,
+    )
+    d = t.to_dict()
+    assert d["direction"] == 1
+    assert d["exit_reason"] == "exit_signal"
+    t2 = Trade.from_dict(d)
+    assert t2 == t
+
+
+# ---------------------------------------------------------------------------
+# BadDataEntry
+# ---------------------------------------------------------------------------
+
+def test_bad_data_entry_round_trip():
+    bde = BadDataEntry(bar_index=42, bar_state="HOLD", reason="start=nan")
+    d = bde.to_dict()
+    assert d == {"bar_index": 42, "bar_state": "HOLD", "reason": "start=nan"}
+    bde2 = BadDataEntry.from_dict(d)
+    assert bde2 == bde
+
+
+# ---------------------------------------------------------------------------
+# OffAnchorEvent
+# ---------------------------------------------------------------------------
+
+def test_off_anchor_event_round_trip():
+    ev = OffAnchorEvent(
+        bar_idx=7, anchor="open", target_hour=9.5,
+        timestamp="2024-01-08T09:30:00+00:00", chosen_idx=0,
+    )
+    d = ev.to_dict()
+    assert d["anchor"] == "open"
+    ev2 = OffAnchorEvent.from_dict(d)
+    assert ev2 == ev

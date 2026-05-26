@@ -350,3 +350,79 @@ class BacktestConfig:
             include_per_bar_df=d.get("include_per_bar_df", False),
             include_indicator_values=d.get("include_indicator_values", False),
         )
+
+
+# ===========================================================================
+# OUTPUT DTOs
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# Trade
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Trade:
+    """A single completed trade from the backtest loop."""
+
+    entry_bar: int = 0
+    entry_date: Optional[str] = None       # ISO timestamp
+    direction: int = 0                      # +1 long, -1 short
+    entry_price: float = 0.0
+    exit_bar: int = 0
+    exit_date: Optional[str] = None        # ISO timestamp
+    exit_price: float = 0.0
+    exit_reason: str = ""                   # 'exit_signal', 'stop', 'flip', 'end_of_data'
+    holding_bars: int = 0
+    return_gross: float = 0.0              # log return before costs
+    return_net: float = 0.0               # log return after costs
+    cumulative_pnl: float = 0.0           # running sum of return_net to this trade
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Trade":
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+
+
+# ---------------------------------------------------------------------------
+# BadDataEntry
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BadDataEntry:
+    """A single bad-data bar from the backtest loop."""
+
+    bar_index: int = 0
+    bar_state: str = ""    # 'FLAT', 'ENTRY', 'HOLD', 'EXIT', 'FLIP'
+    reason: str = ""       # human-readable, e.g. "start=nan" or "end=-5.0"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "BadDataEntry":
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+
+
+# ---------------------------------------------------------------------------
+# OffAnchorEvent
+# ---------------------------------------------------------------------------
+
+@dataclass
+class OffAnchorEvent:
+    """A single bar where the configured open/close anchor was missing
+    and the lenient fallback (first/last sub-bar) fired."""
+
+    bar_idx: int = 0
+    anchor: str = ""        # 'open' or 'close'
+    target_hour: float = 0.0
+    timestamp: Optional[str] = None    # ISO timestamp of the sub-bar group
+    chosen_idx: int = 0
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "OffAnchorEvent":
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
