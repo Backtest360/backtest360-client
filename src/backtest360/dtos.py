@@ -93,3 +93,30 @@ class RiskControls:
     @classmethod
     def from_dict(cls, d: dict) -> "RiskControls":
         return cls(**d)
+
+
+# ---------------------------------------------------------------------------
+# PositionSizing
+# ---------------------------------------------------------------------------
+
+@dataclass
+class PositionSizing:
+    """Position sizing parameters.
+
+    position_weight:     fixed fraction of capital to allocate (1.0 = fully invested).
+    vol_target:          annualised volatility target (e.g. 0.15 = 15%); None = disabled.
+    vol_target_lookback: rolling-window length for the vol estimate (bars).
+    leverage_limit:      maximum gross leverage multiple; None = uncapped.
+    """
+
+    position_weight: float = 1.0
+    vol_target: Optional[float] = None
+    vol_target_lookback: int = 20
+    leverage_limit: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "PositionSizing":
+        return cls(**d)

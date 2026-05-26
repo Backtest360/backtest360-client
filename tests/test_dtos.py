@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 import pytest
 
-from backtest360.dtos import ExecutionCosts, ExecutionMode, RiskControls
+from backtest360.dtos import ExecutionCosts, ExecutionMode, PositionSizing, RiskControls
 
 
 # ---------------------------------------------------------------------------
@@ -92,3 +92,28 @@ def test_risk_controls_none_fields_serialize():
     assert d["stop_type"] is None
     assert d["stop_value"] is None
     assert d["max_drawdown_limit"] is None
+
+
+# ---------------------------------------------------------------------------
+# PositionSizing
+# ---------------------------------------------------------------------------
+
+def test_position_sizing_defaults():
+    ps = PositionSizing()
+    assert ps.position_weight == 1.0
+    assert ps.vol_target is None
+    assert ps.vol_target_lookback == 20
+    assert ps.leverage_limit is None
+
+
+def test_position_sizing_round_trip():
+    ps = PositionSizing(position_weight=0.5, vol_target=0.15, vol_target_lookback=60, leverage_limit=2.0)
+    d = ps.to_dict()
+    assert d == {
+        "position_weight": 0.5,
+        "vol_target": 0.15,
+        "vol_target_lookback": 60,
+        "leverage_limit": 2.0,
+    }
+    ps2 = PositionSizing.from_dict(d)
+    assert ps2 == ps
