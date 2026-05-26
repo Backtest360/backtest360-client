@@ -7,6 +7,7 @@ Round-trip serialization (asdict + reconstruct) is supported for all non-DataFra
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from typing import cast
 
 import pandas as pd
 
@@ -195,6 +196,8 @@ class MarketData:
         trading-days-per-year detection, and data-quality assessment.
         Returns self to allow chaining.
         """
+        import pandas as pd
+
         from backtest360._detection import (
             assess_data_quality,
             detect_bar_frequency,
@@ -204,7 +207,7 @@ class MarketData:
 
         self.ohlcv = df
 
-        bar_freq_info = detect_bar_frequency(df.index)
+        bar_freq_info = detect_bar_frequency(cast(pd.DatetimeIndex, df.index))
         bar_frequency = bar_freq_info["label"]
         self.bar_frequency = bar_frequency
 

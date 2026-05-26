@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 from importlib.metadata import PackageNotFoundError, version
+from typing import Any, cast
 
 import httpx
 
@@ -154,14 +155,14 @@ class BacktestClient:
             "Content-Type": "application/json",
         }
 
-    def _post(self, path: str, body: dict) -> dict:
+    def _post(self, path: str, body: dict) -> Any:
         url = f"{self._base_url}{path}"
         with httpx.Client(timeout=self._timeout) as http:
             response = http.post(url, headers=self._headers(), content=json.dumps(body))
         _handle_error(response)
         return response.json()
 
-    def _get(self, path: str) -> dict:
+    def _get(self, path: str) -> Any:
         url = f"{self._base_url}{path}"
         with httpx.Client(timeout=self._timeout) as http:
             response = http.get(url, headers=self._headers())
@@ -201,17 +202,17 @@ class BacktestClient:
         resp = self._post("/api/validate-strategy", body)
         return ValidationResult.from_dict(resp)
 
-    def list_strategies(self) -> list:
+    def list_strategies(self) -> list[Any]:
         """Return raw catalog entries from /api/strategies (dicts, not typed)."""
         resp = self._get("/api/strategies")
         return resp if isinstance(resp, list) else resp.get("strategies", [])
 
-    def list_indicators(self) -> list:
+    def list_indicators(self) -> list[Any]:
         """Return raw catalog entries from /api/indicators (dicts, not typed)."""
         resp = self._get("/api/indicators")
         return resp if isinstance(resp, list) else resp.get("indicators", [])
 
-    def version(self) -> dict:
+    def version(self) -> Any:
         """Return engine version info from /version."""
         return self._get("/version")
 
@@ -221,7 +222,7 @@ class BacktestClient:
 # ---------------------------------------------------------------------------
 
 
-def _ohlcv_to_wire(df) -> dict | None:
+def _ohlcv_to_wire(df: Any) -> dict | None:
     """Serialize a DataFrame to pandas split orient with ISO UTC timestamps."""
     if df is None:
         return None
@@ -232,7 +233,7 @@ def _ohlcv_to_wire(df) -> dict | None:
     }
 
 
-def _ohlcv_to_parallel(df) -> dict | None:
+def _ohlcv_to_parallel(df: Any) -> dict | None:
     """Serialize a DataFrame to parallel-array format expected by the engine."""
     if df is None:
         return None
@@ -340,7 +341,7 @@ def _build_backtest_body(
         "execution": _config_to_execution(config),
     }
     if strategy.precomputed_signals is not None:
-        s = strategy.precomputed_signals
+        s = cast(Any, strategy.precomputed_signals)
         body["signals"] = {
             "dates": [str(ts) for ts in s.index],
             "values": s.tolist(),

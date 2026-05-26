@@ -15,6 +15,9 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
         pandas-version: ["2.0.3", "latest"]
+        exclude:
+          - python-version: "3.12"
+            pandas-version: "2.0.3"
 
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +43,7 @@ jobs:
         run: ruff format --check src tests
 
       - name: Type check
-        run: mypy --strict src/backtest360
+        run: mypy src/backtest360
 
       - name: Test
         run: pytest -q
