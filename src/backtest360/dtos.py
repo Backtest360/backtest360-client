@@ -187,10 +187,56 @@ class MarketData:
     def load(self, df: pd.DataFrame) -> "MarketData":
         """Populate fields from a raw OHLCV DataFrame via auto-detection.
 
-        Detection helpers are implemented in step 3.7.
+        Runs: bar-frequency detection, market-hours detection,
+        trading-days-per-year detection, and data-quality assessment.
         Returns self to allow chaining.
         """
-        raise NotImplementedError("load() is implemented in step 3.7")
+        from backtest360._detection import (
+            assess_data_quality,
+            detect_bar_frequency,
+            detect_market_hours,
+            detect_trading_days_per_year,
+        )
+
+        self.ohlcv = df
+
+        bar_freq_info = detect_bar_frequency(df.index)
+        bar_frequency = bar_freq_info["label"]
+        self.bar_frequency = bar_frequency
+
+        market_hours = detect_market_hours(df)
+        self.is_24h = market_hours["is_24h"]
+        self.session_open = market_hours["detected_open_hour"]
+        self.session_close = market_hours["detected_close_hour"]
+
+        tdpy = detect_trading_days_per_year(df, self.is_24h)
+        self.trading_days_per_year = tdpy
+
+        bars_per_day = bar_freq_info["bars_per_day"]
+        if "bars_per_year" in bar_freq_info:
+            self.source_bars_per_year = bar_freq_info["bars_per_year"]
+        elif tdpy is None:
+            self.source_bars_per_year = None
+        elif self.is_24h:
+            self.source_bars_per_year = int(tdpy * bars_per_day)
+        else:
+            session_hours = self.session_close - self.session_open
+            if session_hours > 0:
+                session_bars_per_day = max(1, int(session_hours * bars_per_day / 24))
+            else:
+                session_bars_per_day = int(bars_per_day)
+            self.source_bars_per_year = tdpy * session_bars_per_day
+
+        missing_bars, bad_prices, warnings = assess_data_quality(
+            df, bar_frequency, self.is_24h,
+            self.session_open or 0.0,
+            self.session_close or 0.0,
+        )
+        self.missing_bars = missing_bars
+        self.bad_prices = bad_prices
+        self.quality_warnings = warnings
+
+        return self
 
 
 # ---------------------------------------------------------------------------

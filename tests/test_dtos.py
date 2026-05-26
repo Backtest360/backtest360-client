@@ -234,12 +234,64 @@ def test_market_data_scalar_fields_round_trip():
     assert md.quality_warnings == ["sparse"]
 
 
-def test_market_data_load_not_yet_implemented():
-    """load() is a stub until step 3.7."""
+def test_market_data_load_populates_bar_frequency():
+    """load() detects daily frequency from daily-spaced fixture."""
+    df = _make_ohlcv(252)  # a year of daily bars
     md = MarketData()
-    df = _make_ohlcv()
-    with pytest.raises(NotImplementedError):
-        md.load(df)
+    md.load(df)
+    assert md.bar_frequency == "daily"
+    assert md.ohlcv is df
+
+
+def test_market_data_load_populates_is_24h_for_weekday_data():
+    """load() detects session market (no weekend bars)."""
+    df = _make_ohlcv(252)
+    md = MarketData()
+    md.load(df)
+    # 252 business-day bars → no weekend bars → session market
+    assert md.is_24h is False
+
+
+def test_market_data_load_populates_market_hours():
+    """load() sets session_open and session_close on session markets."""
+    df = _make_ohlcv(252)
+    md = MarketData()
+    md.load(df)
+    if not md.is_24h:
+        assert md.session_open is not None
+        assert md.session_close is not None
+    else:
+        assert md.session_open == 0.0
+
+
+def test_market_data_load_chaining():
+    """load() returns self for chaining."""
+    df = _make_ohlcv(252)
+    md = MarketData()
+    result = md.load(df)
+    assert result is md
+
+
+def test_market_data_load_hourly_fixture():
+    """load() detects hourly frequency from hourly-spaced data."""
+    idx = pd.date_range("2024-01-02", periods=1000, freq="h", tz="UTC")
+    c = 100.0 + np.arange(1000, dtype=float) * 0.01
+    df = pd.DataFrame({"open": c, "high": c + 0.5, "low": c - 0.5, "close": c, "volume": 1000.0}, index=idx)
+    md = MarketData()
+    md.load(df)
+    assert md.bar_frequency == "hourly"
+    assert md.missing_bars == 0
+    assert md.bad_prices == 0
+
+
+def test_market_data_load_bad_prices_detected():
+    """load() flags NaN prices in quality_warnings."""
+    df = _make_ohlcv(252)
+    df.loc[df.index[5], "close"] = float("nan")
+    md = MarketData()
+    md.load(df)
+    assert md.bad_prices >= 1
+    assert any("bad price" in w for w in md.quality_warnings)
 
 
 # ---------------------------------------------------------------------------
