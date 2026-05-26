@@ -10,6 +10,7 @@ import pandas as pd
 from backtest360.dtos import (
     AssetInfo,
     BacktestConfig,
+    BacktestResult,
     BadDataEntry,
     BadDataReport,
     ExecutionCosts,
@@ -20,6 +21,7 @@ from backtest360.dtos import (
     OffAnchorReport,
     PositionSizing,
     RiskControls,
+    RunResult,
     SignalResult,
     Statistics,
     Strategy,
@@ -578,3 +580,95 @@ def test_statistics_field_count():
     import dataclasses
     fields = dataclasses.fields(Statistics)
     assert len(fields) >= 120, f"Expected >= 120 fields, got {len(fields)}"
+
+
+# ---------------------------------------------------------------------------
+# RunResult
+# ---------------------------------------------------------------------------
+
+def test_run_result_defaults():
+    rr = RunResult()
+    assert rr.trades == []
+    assert rr.signal_bars_per_year is None
+    assert rr.returns is None
+    assert rr.bad_data is None
+
+
+def test_run_result_from_dict_minimal():
+    d = {
+        "trades": [
+            {
+                "entry_bar": 0, "entry_date": None, "direction": 1,
+                "entry_price": 100.0, "exit_bar": 5, "exit_date": None,
+                "exit_price": 105.0, "exit_reason": "exit_signal",
+                "holding_bars": 5, "return_gross": 0.05, "return_net": 0.048,
+                "cumulative_pnl": 0.048,
+            }
+        ],
+        "signal_bars_per_year": 252,
+    }
+    rr = RunResult.from_dict(d)
+    assert len(rr.trades) == 1
+    assert isinstance(rr.trades[0], Trade)
+    assert rr.trades[0].direction == 1
+    assert rr.signal_bars_per_year == 252
+    assert rr.returns is None  # not included without include_per_bar_df
+
+
+def test_run_result_from_dict_with_series():
+    d = {
+        "trades": [],
+        "signal_bars_per_year": 52,
+        "returns": [0.01, -0.02, 0.03],
+        "equity": [1.01, 0.99, 1.02],
+    }
+    rr = RunResult.from_dict(d)
+    assert rr.returns is not None
+    assert len(rr.returns) == 3
+    assert rr.equity.iloc[2] == pytest.approx(1.02)
+
+
+# ---------------------------------------------------------------------------
+# BacktestResult
+# ---------------------------------------------------------------------------
+
+def test_backtest_result_defaults():
+    br = BacktestResult()
+    assert br.run_result is None
+    assert br.statistics is None
+    assert br.signal_result is None
+
+
+def test_backtest_result_from_dict():
+    d = {
+        "run_result": {
+            "trades": [],
+            "signal_bars_per_year": 252,
+        },
+        "stats": {
+            "sharpe_ratio": 1.35,
+            "total_return": 0.42,
+        },
+    }
+    br = BacktestResult.from_dict(d)
+    assert isinstance(br.run_result, RunResult)
+    assert isinstance(br.statistics, Statistics)
+    assert br.statistics.sharpe_ratio == pytest.approx(1.35)
+    assert br.signal_result is None  # no signal_diagnostics key
+
+
+def test_backtest_result_with_signal_diagnostics():
+    d = {
+        "run_result": {"trades": [], "signal_bars_per_year": 252},
+        "stats": {},
+        "signal_diagnostics": {
+            "long_entry_fired": [True, False],
+            "long_exit_fired": [False, True],
+            "short_entry_fired": None,
+            "short_exit_fired": None,
+        },
+    }
+    br = BacktestResult.from_dict(d)
+    assert br.signal_result is not None
+    assert isinstance(br.signal_result, SignalResult)
+    assert br.signal_result.long_entry_fired is not None

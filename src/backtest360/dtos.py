@@ -714,3 +714,85 @@ class Statistics:
     def from_dict(cls, d: dict) -> "Statistics":
         known = {k for k in cls.__dataclass_fields__}
         return cls(**{k: v for k, v in d.items() if k in known})
+
+
+# ---------------------------------------------------------------------------
+# RunResult
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RunResult:
+    """Output of the bar-by-bar loop. Wraps per-bar series + trade log.
+
+    signal_bars_per_year is inlined here (not on a separate MarketMeta object)
+    so customers don't need to import internal engine types.
+
+    Series fields (returns, signals, equity) are None by default and only
+    populated when include_per_bar_df=True in BacktestConfig.
+    """
+
+    trades: list = field(default_factory=list)     # list[Trade]
+    signal_bars_per_year: Optional[int] = None
+    returns: Optional[pd.Series] = None            # net log returns per bar
+    signals: Optional[pd.Series] = None            # {-1, 0, 1} per bar
+    equity: Optional[pd.Series] = None             # cumulative equity curve
+    bad_data: Optional[BadDataReport] = None
+    off_anchors: Optional[OffAnchorReport] = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "RunResult":
+        trades = [
+            Trade.from_dict(t) if isinstance(t, dict) else t
+            for t in d.get("trades", [])
+        ]
+
+        def _series(key: str) -> Optional[pd.Series]:
+            v = d.get(key)
+            return pd.Series(v, dtype=float) if v is not None else None
+
+        bad_data = (
+            BadDataReport.from_dict(d["bad_data"])
+            if d.get("bad_data") else None
+        )
+        off_anchors = (
+            OffAnchorReport.from_dict(d["off_anchors"])
+            if d.get("off_anchors") else None
+        )
+        return cls(
+            trades=trades,
+            signal_bars_per_year=d.get("signal_bars_per_year"),
+            returns=_series("returns"),
+            signals=_series("signals"),
+            equity=_series("equity"),
+            bad_data=bad_data,
+            off_anchors=off_anchors,
+        )
+
+
+# ---------------------------------------------------------------------------
+# BacktestResult
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BacktestResult:
+    """Complete output of a backtest — top-level SDK response object."""
+
+    run_result: Optional[RunResult] = None
+    statistics: Optional[Statistics] = None
+    signal_result: Optional[SignalResult] = None   # None for precomputed signals
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "BacktestResult":
+        run_result = (
+            RunResult.from_dict(d["run_result"])
+            if d.get("run_result") else None
+        )
+        statistics = (
+            Statistics.from_dict(d["stats"])
+            if d.get("stats") else None
+        )
+        signal_result = (
+            SignalResult.from_dict(d["signal_diagnostics"])
+            if d.get("signal_diagnostics") else None
+        )
+        return cls(run_result=run_result, statistics=statistics, signal_result=signal_result)
