@@ -41,3 +41,6 @@ python_version = "3.10"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "integration: live HTTP tests against a running engine (requires BACKTEST360_API_KEY and BACKTEST360_ENGINE_URL)",
+]
