@@ -7,7 +7,17 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from backtest360.dtos import AssetInfo, ExecutionCosts, ExecutionMode, Indicator, MarketData, PositionSizing, RiskControls, Strategy
+from backtest360.dtos import (
+    AssetInfo,
+    BacktestConfig,
+    ExecutionCosts,
+    ExecutionMode,
+    Indicator,
+    MarketData,
+    PositionSizing,
+    RiskControls,
+    Strategy,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -314,3 +324,66 @@ def test_strategy_from_dict_handles_indicator_dicts():
     s = Strategy.from_dict(d)
     assert isinstance(s.indicators[0], Indicator)
     assert s.indicators[0].id == "sma_10"
+
+
+# ---------------------------------------------------------------------------
+# BacktestConfig
+# ---------------------------------------------------------------------------
+
+def test_backtest_config_defaults():
+    bc = BacktestConfig()
+    assert bc.signal_frequency == "daily"
+    assert bc.entry_mode is None
+    assert bc.exit_mode is None
+    assert bc.costs is None
+    assert bc.risk is None
+    assert bc.sizing is None
+    assert bc.strict_anchors is False
+    assert bc.risk_free_rate == 0.0
+    assert bc.on_bad_data == "raise"
+    assert bc.random_seed == 42
+    assert bc.include_per_bar_df is False
+    assert bc.include_indicator_values is False
+
+
+def test_backtest_config_round_trip_all_none():
+    bc = BacktestConfig()
+    d = bc.to_dict()
+    assert d["signal_frequency"] == "daily"
+    assert d["entry_mode"] is None
+    assert d["costs"] is None
+    bc2 = BacktestConfig.from_dict(d)
+    assert bc2.signal_frequency == "daily"
+    assert bc2.entry_mode is None
+    assert bc2.costs is None
+
+
+def test_backtest_config_round_trip_nested():
+    bc = BacktestConfig(
+        signal_frequency="hourly",
+        entry_mode=ExecutionMode(anchor="open", window=0, fill="exact"),
+        exit_mode=ExecutionMode(anchor="close", window=0, fill="exact"),
+        costs=ExecutionCosts(slippage_bps=2.0, fee_pct=0.0005),
+        risk=RiskControls(stop_type="fixed", stop_value=0.02),
+        sizing=PositionSizing(position_weight=0.5),
+        risk_free_rate=0.04,
+        include_per_bar_df=True,
+    )
+    d = bc.to_dict()
+    assert d["entry_mode"]["anchor"] == "open"
+    assert d["costs"]["slippage_bps"] == 2.0
+    assert d["risk"]["stop_type"] == "fixed"
+    assert d["sizing"]["position_weight"] == 0.5
+    bc2 = BacktestConfig.from_dict(d)
+    assert isinstance(bc2.entry_mode, ExecutionMode)
+    assert bc2.entry_mode.anchor == "open"
+    assert isinstance(bc2.costs, ExecutionCosts)
+    assert bc2.costs.slippage_bps == 2.0
+    assert isinstance(bc2.risk, RiskControls)
+    assert bc2.risk.stop_type == "fixed"
+    assert bc2.include_per_bar_df is True
+
+
+def test_backtest_config_has_no_strategy_field():
+    """Strategy is not a field on BacktestConfig — it's passed to backtest() separately."""
+    assert not hasattr(BacktestConfig, "strategy")

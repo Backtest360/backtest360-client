@@ -281,3 +281,72 @@ class Strategy:
             locked_params=d.get("locked_params", []),
             tier=d.get("tier", "customer"),
         )
+
+
+# ---------------------------------------------------------------------------
+# BacktestConfig
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BacktestConfig:
+    """Execution and risk configuration for a backtest — the HOW, not the WHAT.
+
+    Strategy is passed separately to BacktestClient.backtest(); it is NOT a field
+    here. The engine builds a full BacktestConfig internally when it combines these
+    parameters with the strategy.
+
+    Defaults produce a daily-signal, open-exact entry, close-exact exit backtest
+    with no costs, no risk controls, and full position weighting.
+    """
+
+    signal_frequency: str = "daily"
+    entry_mode: Optional[ExecutionMode] = None    # None → open/exact
+    exit_mode: Optional[ExecutionMode] = None     # None → close/exact
+    costs: Optional[ExecutionCosts] = None        # None → zero costs
+    risk: Optional[RiskControls] = None           # None → no risk controls
+    sizing: Optional[PositionSizing] = None       # None → full weight
+    open_hour: Optional[float] = None             # None → auto-detected
+    close_hour: Optional[float] = None            # None → auto-detected
+    strict_anchors: bool = False
+    risk_free_rate: float = 0.0
+    on_bad_data: str = "raise"
+    random_seed: int = 42
+    include_per_bar_df: bool = False
+    include_indicator_values: bool = False
+
+    def to_dict(self) -> dict:
+        return {
+            "signal_frequency": self.signal_frequency,
+            "entry_mode": self.entry_mode.to_dict() if self.entry_mode else None,
+            "exit_mode": self.exit_mode.to_dict() if self.exit_mode else None,
+            "costs": self.costs.to_dict() if self.costs else None,
+            "risk": self.risk.to_dict() if self.risk else None,
+            "sizing": self.sizing.to_dict() if self.sizing else None,
+            "open_hour": self.open_hour,
+            "close_hour": self.close_hour,
+            "strict_anchors": self.strict_anchors,
+            "risk_free_rate": self.risk_free_rate,
+            "on_bad_data": self.on_bad_data,
+            "random_seed": self.random_seed,
+            "include_per_bar_df": self.include_per_bar_df,
+            "include_indicator_values": self.include_indicator_values,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "BacktestConfig":
+        return cls(
+            signal_frequency=d.get("signal_frequency", "daily"),
+            entry_mode=ExecutionMode.from_dict(d["entry_mode"]) if d.get("entry_mode") else None,
+            exit_mode=ExecutionMode.from_dict(d["exit_mode"]) if d.get("exit_mode") else None,
+            costs=ExecutionCosts.from_dict(d["costs"]) if d.get("costs") else None,
+            risk=RiskControls.from_dict(d["risk"]) if d.get("risk") else None,
+            sizing=PositionSizing.from_dict(d["sizing"]) if d.get("sizing") else None,
+            open_hour=d.get("open_hour"),
+            close_hour=d.get("close_hour"),
+            strict_anchors=d.get("strict_anchors", False),
+            risk_free_rate=d.get("risk_free_rate", 0.0),
+            on_bad_data=d.get("on_bad_data", "raise"),
+            random_seed=d.get("random_seed", 42),
+            include_per_bar_df=d.get("include_per_bar_df", False),
+            include_indicator_values=d.get("include_indicator_values", False),
+        )
