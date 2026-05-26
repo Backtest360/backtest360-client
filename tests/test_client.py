@@ -223,7 +223,7 @@ def test_backtest_with_benchmark():
     with patch.object(c, "_post", return_value=body["result"]) as mock_post:
         c.backtest(Strategy(), BacktestConfig(), _minimal_market_data(), benchmark=_minimal_market_data())
     posted_body = mock_post.call_args[0][1]
-    assert "benchmark_market_data" in posted_body
+    assert "benchmark" in posted_body
 
 
 # ---------------------------------------------------------------------------
@@ -311,10 +311,10 @@ def test_list_indicators_unwraps_dict_response():
 
 def test_version_calls_get_endpoint():
     c = _client()
-    with patch.object(c, "_get", return_value={"version": "0.5.2"}) as mock_get:
+    with patch.object(c, "_get", return_value={"engine": "0.5.3"}) as mock_get:
         result = c.version()
-    mock_get.assert_called_once_with("/api/version")
-    assert result == {"version": "0.5.2"}
+    mock_get.assert_called_once_with("/version")
+    assert result == {"engine": "0.5.3"}
 
 
 # ---------------------------------------------------------------------------

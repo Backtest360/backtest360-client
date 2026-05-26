@@ -829,10 +829,18 @@ class BacktestResult:
 
     @classmethod
     def from_dict(cls, d: dict) -> "BacktestResult":
-        run_result = (
-            RunResult.from_dict(d["run_result"])
-            if d.get("run_result") else None
-        )
+        # Engine returns flat shape: trades/series/stats at top level (no run_result wrapper).
+        series = d.get("series", {})
+        run_dict: dict = {
+            "trades": d.get("trades", []),
+            "signal_bars_per_year": d.get("signal_bars_per_year"),
+            "returns": series.get("returns"),
+            "signals": series.get("signals"),
+            "equity": series.get("equity"),
+        }
+        if d.get("off_anchors"):
+            run_dict["off_anchors"] = d["off_anchors"]
+        run_result = RunResult.from_dict(run_dict)
         statistics = (
             Statistics.from_dict(d["stats"])
             if d.get("stats") else None
