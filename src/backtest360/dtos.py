@@ -62,3 +62,34 @@ class ExecutionCosts:
     @classmethod
     def from_dict(cls, d: dict) -> "ExecutionCosts":
         return cls(**d)
+
+
+# ---------------------------------------------------------------------------
+# RiskControls
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RiskControls:
+    """Per-strategy risk controls applied inside the backtest loop.
+
+    stop_type:           stop-loss type: 'fixed', 'trailing', 'atr', 'trailing_atr', or None.
+    stop_value:          for fixed/trailing, the percentage loss; for atr/trailing_atr, ATR multiplier.
+    stop_atr_period:     ATR period (only when stop_type is 'atr' or 'trailing_atr').
+    stop_reentry:        reentry rule after stop: 'immediate', 'next_signal', 'cooldown'.
+    stop_cooldown_bars:  bars to wait when stop_reentry='cooldown'.
+    max_drawdown_limit:  halt trading when cumulative drawdown exceeds this fraction.
+    """
+
+    stop_type: Optional[str] = None
+    stop_value: Optional[float] = None
+    stop_atr_period: int = 14
+    stop_reentry: str = "immediate"
+    stop_cooldown_bars: int = 0
+    max_drawdown_limit: Optional[float] = None
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "RiskControls":
+        return cls(**d)

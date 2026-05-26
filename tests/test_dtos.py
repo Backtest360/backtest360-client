@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 import pytest
 
-from backtest360.dtos import ExecutionCosts, ExecutionMode
+from backtest360.dtos import ExecutionCosts, ExecutionMode, RiskControls
 
 
 # ---------------------------------------------------------------------------
@@ -54,3 +54,41 @@ def test_execution_costs_round_trip():
     }
     ec2 = ExecutionCosts.from_dict(d)
     assert ec2 == ec
+
+
+# ---------------------------------------------------------------------------
+# RiskControls
+# ---------------------------------------------------------------------------
+
+def test_risk_controls_defaults():
+    rc = RiskControls()
+    assert rc.stop_type is None
+    assert rc.stop_value is None
+    assert rc.stop_atr_period == 14
+    assert rc.stop_reentry == "immediate"
+    assert rc.stop_cooldown_bars == 0
+    assert rc.max_drawdown_limit is None
+
+
+def test_risk_controls_round_trip():
+    rc = RiskControls(
+        stop_type="trailing_atr",
+        stop_value=2.0,
+        stop_atr_period=20,
+        stop_reentry="cooldown",
+        stop_cooldown_bars=3,
+        max_drawdown_limit=0.15,
+    )
+    d = rc.to_dict()
+    assert d["stop_type"] == "trailing_atr"
+    assert d["max_drawdown_limit"] == 0.15
+    rc2 = RiskControls.from_dict(d)
+    assert rc2 == rc
+
+
+def test_risk_controls_none_fields_serialize():
+    rc = RiskControls()
+    d = rc.to_dict()
+    assert d["stop_type"] is None
+    assert d["stop_value"] is None
+    assert d["max_drawdown_limit"] is None
