@@ -426,3 +426,72 @@ class OffAnchorEvent:
     @classmethod
     def from_dict(cls, d: dict) -> "OffAnchorEvent":
         return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+
+
+# ---------------------------------------------------------------------------
+# BadDataReport
+# ---------------------------------------------------------------------------
+
+@dataclass
+class BadDataReport:
+    """Summary of bad-data bars encountered during run_backtest()."""
+
+    count: int = 0
+    entries: list = field(default_factory=list)    # list[BadDataEntry] (or raw dicts from server)
+    policy: str = ""                               # 'raise' or 'zero'
+
+    def to_dict(self) -> dict:
+        return {
+            "count": self.count,
+            "entries": [
+                e.to_dict() if isinstance(e, BadDataEntry) else e
+                for e in self.entries
+            ],
+            "policy": self.policy,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "BadDataReport":
+        entries = [
+            BadDataEntry.from_dict(e) if isinstance(e, dict) else e
+            for e in d.get("entries", [])
+        ]
+        return cls(count=d.get("count", 0), entries=entries, policy=d.get("policy", ""))
+
+
+# ---------------------------------------------------------------------------
+# OffAnchorReport
+# ---------------------------------------------------------------------------
+
+@dataclass
+class OffAnchorReport:
+    """Summary of bars where the open/close anchor was missing and the lenient fallback fired."""
+
+    open_count: int = 0
+    close_count: int = 0
+    events: list = field(default_factory=list)    # list[OffAnchorEvent] (or raw dicts from server)
+    strict: bool = False
+
+    def to_dict(self) -> dict:
+        return {
+            "open_count": self.open_count,
+            "close_count": self.close_count,
+            "events": [
+                e.to_dict() if isinstance(e, OffAnchorEvent) else e
+                for e in self.events
+            ],
+            "strict": self.strict,
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "OffAnchorReport":
+        events = [
+            OffAnchorEvent.from_dict(e) if isinstance(e, dict) else e
+            for e in d.get("events", [])
+        ]
+        return cls(
+            open_count=d.get("open_count", 0),
+            close_count=d.get("close_count", 0),
+            events=events,
+            strict=d.get("strict", False),
+        )

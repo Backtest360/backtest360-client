@@ -11,11 +11,13 @@ from backtest360.dtos import (
     AssetInfo,
     BacktestConfig,
     BadDataEntry,
+    BadDataReport,
     ExecutionCosts,
     ExecutionMode,
     Indicator,
     MarketData,
     OffAnchorEvent,
+    OffAnchorReport,
     PositionSizing,
     RiskControls,
     Strategy,
@@ -443,3 +445,48 @@ def test_off_anchor_event_round_trip():
     assert d["anchor"] == "open"
     ev2 = OffAnchorEvent.from_dict(d)
     assert ev2 == ev
+
+
+# ---------------------------------------------------------------------------
+# BadDataReport
+# ---------------------------------------------------------------------------
+
+def test_bad_data_report_empty():
+    r = BadDataReport()
+    assert r.count == 0
+    assert r.entries == []
+    assert r.policy == ""
+
+
+def test_bad_data_report_round_trip():
+    bde = BadDataEntry(bar_index=3, bar_state="HOLD", reason="end=-1.0")
+    r = BadDataReport(count=1, entries=[bde], policy="zero")
+    d = r.to_dict()
+    assert d["count"] == 1
+    assert d["entries"][0]["bar_index"] == 3
+    r2 = BadDataReport.from_dict(d)
+    assert r2.count == 1
+    assert isinstance(r2.entries[0], BadDataEntry)
+    assert r2.entries[0].reason == "end=-1.0"
+
+
+# ---------------------------------------------------------------------------
+# OffAnchorReport
+# ---------------------------------------------------------------------------
+
+def test_off_anchor_report_empty():
+    r = OffAnchorReport()
+    assert r.open_count == 0
+    assert r.close_count == 0
+    assert r.events == []
+
+
+def test_off_anchor_report_round_trip():
+    ev = OffAnchorEvent(bar_idx=2, anchor="close", target_hour=16.0, chosen_idx=5)
+    r = OffAnchorReport(open_count=0, close_count=1, events=[ev], strict=False)
+    d = r.to_dict()
+    assert d["close_count"] == 1
+    r2 = OffAnchorReport.from_dict(d)
+    assert r2.close_count == 1
+    assert isinstance(r2.events[0], OffAnchorEvent)
+    assert r2.events[0].anchor == "close"
