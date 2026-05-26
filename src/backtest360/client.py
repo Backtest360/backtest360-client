@@ -206,8 +206,8 @@ class BacktestClient:
         return resp if isinstance(resp, list) else resp.get("indicators", [])
 
     def version(self) -> dict:
-        """Return engine version info from /api/version."""
-        return self._get("/api/version")
+        """Return engine version info from /version."""
+        return self._get("/version")
 
 
 # ---------------------------------------------------------------------------
@@ -225,6 +225,95 @@ def _ohlcv_to_wire(df) -> Optional[dict]:
     }
 
 
+def _ohlcv_to_parallel(df) -> Optional[dict]:
+    """Serialize a DataFrame to parallel-array format expected by the engine."""
+    if df is None:
+        return None
+    result: dict = {
+        "dates": [str(ts) for ts in df.index],
+        "open": df["open"].tolist(),
+        "high": df["high"].tolist(),
+        "low": df["low"].tolist(),
+        "close": df["close"].tolist(),
+    }
+    if "volume" in df.columns:
+        result["volume"] = df["volume"].tolist()
+    return result
+
+
+def _strategy_to_wire(strategy: Strategy) -> dict:
+    """Serialize Strategy to the engine's StrategyInput wire shape.
+
+    Engine expects {condition_tree, indicators[]} where each indicator
+    has {ref, name, kind, params, upstream}. The SDK's Indicator DTO
+    uses `id` as the ref; `kind` defaults to 'technical' when unset.
+    """
+    d = strategy.to_dict()
+    indicators = []
+    for ind in (d.get("indicators") or []):
+        indicators.append({
+            "ref": ind.get("ref") or ind.get("id"),
+            "name": ind["name"],
+            "kind": ind.get("kind", "technical"),
+            "params": ind.get("params") or {},
+            "upstream": ind.get("upstream") or [],
+        })
+    return {
+        "condition_tree": d.get("condition_tree"),
+        "indicators": indicators,
+    }
+
+
+def _config_to_execution(config: BacktestConfig) -> dict:
+    """Map BacktestConfig to the engine's flat ExecutionConfig wire shape."""
+    cfg = config.to_dict()
+    exec_dict: dict = {
+        "signal_frequency": cfg.get("signal_frequency", "daily"),
+        "risk_free_rate": cfg.get("risk_free_rate", 0.0),
+        "random_seed": cfg.get("random_seed", 42),
+        "on_bad_data": cfg.get("on_bad_data", "raise"),
+        "strict_anchors": cfg.get("strict_anchors", False),
+        "entry_anchor": "open",
+        "entry_window": 0,
+        "entry_fill": "exact",
+        "exit_anchor": "close",
+        "exit_window": 0,
+        "exit_fill": "exact",
+    }
+    if cfg.get("entry_mode"):
+        em = cfg["entry_mode"]
+        exec_dict["entry_anchor"] = em.get("anchor", "open")
+        exec_dict["entry_window"] = em.get("window", 0)
+        exec_dict["entry_fill"] = em.get("fill", "exact")
+    if cfg.get("exit_mode"):
+        xm = cfg["exit_mode"]
+        exec_dict["exit_anchor"] = xm.get("anchor", "close")
+        exec_dict["exit_window"] = xm.get("window", 0)
+        exec_dict["exit_fill"] = xm.get("fill", "exact")
+    if cfg.get("costs"):
+        costs = cfg["costs"]
+        exec_dict["slippage_bps"] = costs.get("slippage_bps", 0.0)
+        exec_dict["fee_pct"] = costs.get("fee_pct", 0.0)
+        exec_dict["vol_scaled_slippage"] = costs.get("vol_scaled_slippage", False)
+        exec_dict["vol_slippage_lookback"] = costs.get("vol_slippage_lookback", 20)
+    if cfg.get("risk"):
+        risk = cfg["risk"]
+        for k in ("stop_type", "stop_value", "stop_atr_period", "stop_reentry",
+                  "stop_cooldown_bars", "max_drawdown_limit"):
+            if risk.get(k) is not None:
+                exec_dict[k] = risk[k]
+    if cfg.get("sizing"):
+        sz = cfg["sizing"]
+        for k in ("position_weight", "vol_target", "vol_target_lookback", "leverage_limit"):
+            if sz.get(k) is not None:
+                exec_dict[k] = sz[k]
+    if cfg.get("open_hour") is not None:
+        exec_dict["open_hour"] = cfg["open_hour"]
+    if cfg.get("close_hour") is not None:
+        exec_dict["close_hour"] = cfg["close_hour"]
+    return exec_dict
+
+
 def _build_backtest_body(
     strategy: Strategy,
     config: BacktestConfig,
@@ -232,31 +321,17 @@ def _build_backtest_body(
     benchmark: Optional[MarketData] = None,
 ) -> dict:
     body: dict = {
-        "strategy": strategy.to_dict(),
-        "config": config.to_dict(),
-        "market_data": {
-            "ohlcv": _ohlcv_to_wire(market_data.ohlcv),
-            "asset_info": market_data.asset_info.to_dict(),
-            "is_24h": market_data.is_24h,
-            "session_open": market_data.session_open,
-            "session_close": market_data.session_close,
-            "trading_days_per_year": market_data.trading_days_per_year,
-            "bar_frequency": market_data.bar_frequency,
-            "source_bars_per_year": market_data.source_bars_per_year,
-            "missing_bars": market_data.missing_bars,
-            "bad_prices": market_data.bad_prices,
-            "quality_warnings": market_data.quality_warnings,
-        },
+        "data_source": {"ohlcv": _ohlcv_to_parallel(market_data.ohlcv)},
+        "execution": _config_to_execution(config),
     }
     if strategy.precomputed_signals is not None:
-        import pandas as pd
         s = strategy.precomputed_signals
-        body["strategy"]["precomputed_signals"] = {
-            "index": [str(ts) for ts in s.index],
-            "data": s.tolist(),
+        body["signals"] = {
+            "dates": [str(ts) for ts in s.index],
+            "values": s.tolist(),
         }
+    else:
+        body["strategy"] = _strategy_to_wire(strategy)
     if benchmark is not None:
-        body["benchmark_market_data"] = {
-            "ohlcv": _ohlcv_to_wire(benchmark.ohlcv),
-        }
+        body["benchmark"] = {"ohlcv": _ohlcv_to_parallel(benchmark.ohlcv)}
     return body
