@@ -20,6 +20,7 @@ from backtest360.dtos import (
     OffAnchorReport,
     PositionSizing,
     RiskControls,
+    SignalResult,
     Strategy,
     Trade,
 )
@@ -490,3 +491,33 @@ def test_off_anchor_report_round_trip():
     assert r2.close_count == 1
     assert isinstance(r2.events[0], OffAnchorEvent)
     assert r2.events[0].anchor == "close"
+
+
+# ---------------------------------------------------------------------------
+# SignalResult
+# ---------------------------------------------------------------------------
+
+def test_signal_result_defaults():
+    sr = SignalResult()
+    assert sr.long_entry_fired is None
+    assert sr.long_exit_fired is None
+
+
+def test_signal_result_from_dict():
+    d = {
+        "long_entry_fired": [True, False, True],
+        "long_exit_fired": [False, True, False],
+        "short_entry_fired": None,
+        "short_exit_fired": None,
+    }
+    sr = SignalResult.from_dict(d)
+    assert sr.long_entry_fired is not None
+    assert sr.long_entry_fired.tolist() == [True, False, True]
+    assert bool(sr.long_exit_fired.iloc[1]) is True
+    assert sr.short_entry_fired is None
+
+
+def test_signal_result_from_dict_all_none():
+    sr = SignalResult.from_dict({})
+    assert sr.long_entry_fired is None
+    assert sr.short_exit_fired is None

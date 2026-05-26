@@ -495,3 +495,35 @@ class OffAnchorReport:
             events=events,
             strict=d.get("strict", False),
         )
+
+
+# ---------------------------------------------------------------------------
+# SignalResult
+# ---------------------------------------------------------------------------
+
+@dataclass
+class SignalResult:
+    """Diagnostic output of the signal generator.
+
+    Populated when include_per_bar_df=True is set in BacktestConfig.
+    Series fields are None by default (omitted from default responses).
+    """
+
+    long_entry_fired: Optional[pd.Series] = None
+    long_exit_fired: Optional[pd.Series] = None
+    short_entry_fired: Optional[pd.Series] = None
+    short_exit_fired: Optional[pd.Series] = None
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "SignalResult":
+        """Reconstruct from the API signal_diagnostics sub-dict."""
+        def _to_series(v: Optional[list]) -> Optional[pd.Series]:
+            if v is None:
+                return None
+            return pd.Series(v, dtype=bool)
+        return cls(
+            long_entry_fired=_to_series(d.get("long_entry_fired")),
+            long_exit_fired=_to_series(d.get("long_exit_fired")),
+            short_entry_fired=_to_series(d.get("short_entry_fired")),
+            short_exit_fired=_to_series(d.get("short_exit_fired")),
+        )
