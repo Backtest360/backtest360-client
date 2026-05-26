@@ -147,3 +147,47 @@ class AssetInfo:
     @classmethod
     def from_dict(cls, d: dict) -> "AssetInfo":
         return cls(**d)
+
+
+# ---------------------------------------------------------------------------
+# MarketData
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MarketData:
+    """OHLCV market data plus auto-detected market properties.
+
+    All 11 fields default so ``MarketData()`` is a legal bare constructor.
+    Call ``md.load(df)`` to populate fields from a raw OHLCV DataFrame.
+
+    The ``.ts`` property is a thin alias for ``.ohlcv`` — use either name.
+    """
+
+    ohlcv: Optional[pd.DataFrame] = None
+    asset_info: AssetInfo = field(default_factory=AssetInfo)
+    is_24h: Optional[bool] = None
+    session_open: Optional[float] = None
+    session_close: Optional[float] = None
+    trading_days_per_year: Optional[int] = None
+    bar_frequency: Optional[str] = None
+    source_bars_per_year: Optional[int] = None
+    missing_bars: int = 0
+    bad_prices: int = 0
+    quality_warnings: list = field(default_factory=list)
+
+    # .ts is a thin alias over .ohlcv (preserves dataclasses.replace() compat)
+    @property
+    def ts(self) -> Optional[pd.DataFrame]:
+        return self.ohlcv
+
+    @ts.setter
+    def ts(self, df: Optional[pd.DataFrame]) -> None:
+        self.ohlcv = df
+
+    def load(self, df: pd.DataFrame) -> "MarketData":
+        """Populate fields from a raw OHLCV DataFrame via auto-detection.
+
+        Detection helpers are implemented in step 3.7.
+        Returns self to allow chaining.
+        """
+        raise NotImplementedError("load() is implemented in step 3.7")

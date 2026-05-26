@@ -4,7 +4,10 @@ from dataclasses import asdict
 
 import pytest
 
-from backtest360.dtos import AssetInfo, ExecutionCosts, ExecutionMode, PositionSizing, RiskControls
+import numpy as np
+import pandas as pd
+
+from backtest360.dtos import AssetInfo, ExecutionCosts, ExecutionMode, MarketData, PositionSizing, RiskControls
 
 
 # ---------------------------------------------------------------------------
@@ -151,3 +154,67 @@ def test_asset_info_bare_constructor_is_legal():
     d = ai.to_dict()
     ai2 = AssetInfo.from_dict(d)
     assert ai2 == ai
+
+
+# ---------------------------------------------------------------------------
+# MarketData
+# ---------------------------------------------------------------------------
+
+def _make_ohlcv(n: int = 10) -> pd.DataFrame:
+    idx = pd.date_range("2024-01-02", periods=n, freq="B", tz="UTC")
+    c = 100.0 + np.arange(n, dtype=float)
+    return pd.DataFrame({"open": c, "high": c + 0.5, "low": c - 0.5, "close": c, "volume": 1000.0}, index=idx)
+
+
+def test_market_data_bare_constructor():
+    md = MarketData()
+    assert md.ohlcv is None
+    assert isinstance(md.asset_info, AssetInfo)
+    assert md.is_24h is None
+    assert md.bar_frequency is None
+    assert md.missing_bars == 0
+    assert md.bad_prices == 0
+    assert md.quality_warnings == []
+
+
+def test_market_data_ts_alias():
+    df = _make_ohlcv()
+    md = MarketData()
+    md.ts = df
+    assert md.ohlcv is df
+    assert md.ts is df
+
+
+def test_market_data_ohlcv_field():
+    df = _make_ohlcv()
+    md = MarketData(ohlcv=df)
+    assert md.ts is df
+
+
+def test_market_data_scalar_fields_round_trip():
+    """Round-trip for all non-DataFrame fields."""
+    md = MarketData(
+        asset_info=AssetInfo(ticker="SPY"),
+        is_24h=False,
+        session_open=9.5,
+        session_close=16.0,
+        trading_days_per_year=252,
+        bar_frequency="daily",
+        source_bars_per_year=252,
+        missing_bars=2,
+        bad_prices=0,
+        quality_warnings=["sparse"],
+    )
+    assert md.is_24h is False
+    assert md.session_open == 9.5
+    assert md.trading_days_per_year == 252
+    assert md.asset_info.ticker == "SPY"
+    assert md.quality_warnings == ["sparse"]
+
+
+def test_market_data_load_not_yet_implemented():
+    """load() is a stub until step 3.7."""
+    md = MarketData()
+    df = _make_ohlcv()
+    with pytest.raises(NotImplementedError):
+        md.load(df)
