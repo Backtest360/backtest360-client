@@ -191,3 +191,31 @@ class MarketData:
         Returns self to allow chaining.
         """
         raise NotImplementedError("load() is implemented in step 3.7")
+
+
+# ---------------------------------------------------------------------------
+# Indicator
+# ---------------------------------------------------------------------------
+
+@dataclass
+class Indicator:
+    """A reference to a registered indicator, parameterized for a strategy.
+
+    id:       unique identifier within the Strategy.indicators list; referenced
+              by condition leaves in the condition_tree.
+    name:     the registered indicator kind (e.g. 'RSI', 'SMA', 'ATR').
+    params:   parameter overrides (e.g. {'lookback': 14}).
+    upstream: list of Indicator ids this indicator depends on (for transforms).
+    """
+
+    id: str = ""
+    name: str = ""
+    params: dict = field(default_factory=dict)
+    upstream: list = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Indicator":
+        return cls(**d)

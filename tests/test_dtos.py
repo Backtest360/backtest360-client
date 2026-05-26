@@ -7,7 +7,7 @@ import pytest
 import numpy as np
 import pandas as pd
 
-from backtest360.dtos import AssetInfo, ExecutionCosts, ExecutionMode, MarketData, PositionSizing, RiskControls
+from backtest360.dtos import AssetInfo, ExecutionCosts, ExecutionMode, Indicator, MarketData, PositionSizing, RiskControls
 
 
 # ---------------------------------------------------------------------------
@@ -218,3 +218,31 @@ def test_market_data_load_not_yet_implemented():
     df = _make_ohlcv()
     with pytest.raises(NotImplementedError):
         md.load(df)
+
+
+# ---------------------------------------------------------------------------
+# Indicator
+# ---------------------------------------------------------------------------
+
+def test_indicator_defaults():
+    ind = Indicator()
+    assert ind.id == ""
+    assert ind.name == ""
+    assert ind.params == {}
+    assert ind.upstream == []
+
+
+def test_indicator_round_trip():
+    ind = Indicator(id="rsi_14", name="RSI", params={"lookback": 14}, upstream=[])
+    d = ind.to_dict()
+    assert d == {"id": "rsi_14", "name": "RSI", "params": {"lookback": 14}, "upstream": []}
+    ind2 = Indicator.from_dict(d)
+    assert ind2 == ind
+
+
+def test_indicator_with_upstream():
+    ind = Indicator(id="zscore_rsi", name="ZScore", params={"lookback": 20}, upstream=["rsi_14"])
+    d = ind.to_dict()
+    assert d["upstream"] == ["rsi_14"]
+    ind2 = Indicator.from_dict(d)
+    assert ind2.upstream == ["rsi_14"]
