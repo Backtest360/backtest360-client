@@ -120,3 +120,30 @@ class PositionSizing:
     @classmethod
     def from_dict(cls, d: dict) -> "PositionSizing":
         return cls(**d)
+
+
+# ---------------------------------------------------------------------------
+# AssetInfo
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AssetInfo:
+    """Optional metadata about the asset being backtested.
+
+    All fields default to 'UNKNOWN' / True so that Tier-A customers
+    (BYO DataFrame) never need to construct one explicitly.
+    """
+
+    ticker: str = "UNKNOWN"
+    name: str = "UNKNOWN"
+    asset_class: str = "UNKNOWN"   # 'stocks', 'crypto', 'forex', 'indices'
+    exchange: str = "UNKNOWN"
+    currency: str = "UNKNOWN"
+    active: bool = True
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "AssetInfo":
+        return cls(**d)

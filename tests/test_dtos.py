@@ -4,7 +4,7 @@ from dataclasses import asdict
 
 import pytest
 
-from backtest360.dtos import ExecutionCosts, ExecutionMode, PositionSizing, RiskControls
+from backtest360.dtos import AssetInfo, ExecutionCosts, ExecutionMode, PositionSizing, RiskControls
 
 
 # ---------------------------------------------------------------------------
@@ -117,3 +117,37 @@ def test_position_sizing_round_trip():
     }
     ps2 = PositionSizing.from_dict(d)
     assert ps2 == ps
+
+
+# ---------------------------------------------------------------------------
+# AssetInfo
+# ---------------------------------------------------------------------------
+
+def test_asset_info_defaults():
+    ai = AssetInfo()
+    assert ai.ticker == "UNKNOWN"
+    assert ai.name == "UNKNOWN"
+    assert ai.asset_class == "UNKNOWN"
+    assert ai.exchange == "UNKNOWN"
+    assert ai.currency == "UNKNOWN"
+    assert ai.active is True
+
+
+def test_asset_info_round_trip():
+    ai = AssetInfo(ticker="SPY", name="SPDR S&P 500 ETF", asset_class="stocks",
+                   exchange="NYSE", currency="USD", active=True)
+    d = ai.to_dict()
+    assert d == {
+        "ticker": "SPY", "name": "SPDR S&P 500 ETF", "asset_class": "stocks",
+        "exchange": "NYSE", "currency": "USD", "active": True,
+    }
+    ai2 = AssetInfo.from_dict(d)
+    assert ai2 == ai
+
+
+def test_asset_info_bare_constructor_is_legal():
+    """Tier-A customers (BYO data) never need to pass AssetInfo."""
+    ai = AssetInfo()
+    d = ai.to_dict()
+    ai2 = AssetInfo.from_dict(d)
+    assert ai2 == ai
