@@ -140,6 +140,15 @@ print(f"Sharpe ratio: {s.sharpe_ratio:.2f}")
 print(f"Max drawdown: {s.max_drawdown:.2%}")
 print(f"Win rate:     {s.win_rate:.2%}")
 print(f"Total trades: {s.total_trades}")
+
+# --- Plot equity curve ---
+import matplotlib.pyplot as plt
+
+result.equity.plot(title="Equity curve — RSI(14) on BTC/USD 1y daily")
+plt.xlabel("Date")
+plt.ylabel("Cumulative return")
+plt.tight_layout()
+plt.show()
 ```
 
 Output varies by fetch date (BTC is live data). Approximate values for a recent 1-year window:
