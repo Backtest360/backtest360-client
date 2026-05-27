@@ -148,3 +148,21 @@ class Client:
             )
 
         return response.json()
+
+    # ---------------------------------------------------------------------------
+    # Public API methods
+    # ---------------------------------------------------------------------------
+
+    def version(self) -> dict:
+        """Return engine version info from ``GET /version``.
+
+        Returns:
+            Dict with at minimum ``{"version": "x.y.z"}``. May include
+            ``min_client``, ``api_contract``, and ``latest_client`` fields.
+
+        Example:
+            >>> info = client.version()
+            >>> print(info["version"])
+            0.5.3
+        """
+        return self._request("GET", "/version")

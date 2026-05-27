@@ -261,3 +261,45 @@ def test_client_importable_from_package():
     from backtest360 import Client as C  # noqa: F401
 
     assert C is Client
+
+
+# ---------------------------------------------------------------------------
+# Client.version tests
+# ---------------------------------------------------------------------------
+
+
+def test_version_returns_dict():
+    c = Client(api_key="key")
+    payload = {"version": "0.5.3", "min_client": "0.1.0a1"}
+    mock_ctx, mock_http, _ = _mock_http_context("GET", 200, payload)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.version()
+    assert result == payload
+
+
+def test_version_hits_correct_path():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("GET", 200, {"version": "1.0"})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.version()
+    call_url = mock_http.get.call_args[0][0]
+    assert call_url.endswith("/version")
+
+
+def test_version_passes_through_raw_dict():
+    c = Client(api_key="key")
+    payload = {"version": "0.5.3", "api_contract": "2026-05-27", "latest_client": "0.1.0a1"}
+    mock_ctx, _, _ = _mock_http_context("GET", 200, payload)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.version()
+    assert result["api_contract"] == "2026-05-27"
+    assert result["latest_client"] == "0.1.0a1"
+
+
+def test_version_propagates_error():
+    c = Client(api_key="key")
+    mock_ctx, _, _ = _mock_http_context("GET", 401, {"detail": "Invalid key."})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c.version()
+    assert exc_info.value.status == 401
