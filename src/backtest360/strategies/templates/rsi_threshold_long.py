@@ -18,6 +18,11 @@ Example::
     md = MarketData()
     md.load(df)
     result = BacktestClient(api_key="...").backtest(rsi_threshold_long(), BacktestConfig(), md)
+
+    import matplotlib.pyplot as plt
+    result.equity.plot(title="Equity curve")
+    plt.tight_layout()
+    plt.show()
 """
 
 from __future__ import annotations
