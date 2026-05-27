@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import pytest
-
 from backtest360.strategy import Costs, Execution, Risk, Sizing, Strategy
-
 
 # ---------------------------------------------------------------------------
 # Execution
@@ -61,7 +58,9 @@ def test_costs_defaults():
 
 
 def test_costs_to_wire():
-    w = Costs(slippage_bps=5.0, fee_pct=0.001, vol_scaled_slippage=True, vol_slippage_lookback=30).to_wire()
+    w = Costs(
+        slippage_bps=5.0, fee_pct=0.001, vol_scaled_slippage=True, vol_slippage_lookback=30
+    ).to_wire()
     assert w["slippage_bps"] == 5.0
     assert w["fee_pct"] == 0.001
     assert w["vol_scaled_slippage"] is True
@@ -102,7 +101,9 @@ def test_risk_to_wire_no_stop():
 
 
 def test_risk_to_wire_trailing_atr():
-    w = Risk(stop="trailing_atr", value=2.5, atr_period=14, reentry=False, cooldown_bars=3).to_wire()
+    w = Risk(
+        stop="trailing_atr", value=2.5, atr_period=14, reentry=False, cooldown_bars=3
+    ).to_wire()
     assert w["stop_type"] == "trailing_atr"
     assert w["stop_value"] == 2.5
     assert w["stop_atr_period"] == 14
