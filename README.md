@@ -60,6 +60,8 @@ pip install backtest360-client
 
 That's it. No extra dependencies to manage — pandas and httpx come along automatically.
 
+The examples below fetch data with `yfinance`; install it separately with `pip install yfinance` if you want to run them as-is.
+
 ---
 
 ### Step 4 — Get an API key
@@ -86,7 +88,7 @@ To make it permanent, add that `export` line to `~/.bashrc` or `~/.zshrc`.
 
 ### Step 5 — Prepare your data
 
-The SDK works with any OHLCV CSV file. Your file needs at least these columns:
+The SDK works with any OHLCV DataFrame — Yahoo Finance, Tiingo, an IB cache export, your own CSV, anything. The DataFrame needs at least these columns (case-insensitive):
 
 ```
 date,open,high,low,close,volume
@@ -95,7 +97,7 @@ date,open,high,low,close,volume
 ...
 ```
 
-The date column should be the index (or the first column). Column names are case-insensitive.
+The date column should be the index (or the first column). The quickstart below fetches 1 year of BTC daily bars from Yahoo Finance — swap in any source that produces the same shape.
 
 ---
 
@@ -105,12 +107,15 @@ Save this as `my_backtest.py` and run it with `python my_backtest.py` (or `pytho
 
 ```python
 import os
-import pandas as pd
+import yfinance as yf
 from backtest360 import BacktestClient, BacktestConfig, MarketData
 from backtest360.strategies import rsi_threshold_long
 
-# --- Load your CSV ---
-df = pd.read_csv("aapl.csv", index_col=0, parse_dates=True)
+# --- Fetch 1 year of BTC daily bars from Yahoo Finance ---
+df = yf.download(
+    "BTC-USD", period="1y", interval="1d",
+    auto_adjust=False, multi_level_index=False, progress=False,
+)
 df.columns = df.columns.str.lower()   # normalise to lowercase
 
 # --- Wrap in MarketData (auto-detects frequency, hours, data quality) ---
@@ -137,14 +142,14 @@ print(f"Win rate:     {s.win_rate:.2%}")
 print(f"Total trades: {s.total_trades}")
 ```
 
-Expected output (numbers vary by dataset):
+Output varies by fetch date (BTC is live data). Approximate values for a recent 1-year window:
 
 ```
-CAGR:         14.32%
-Sharpe ratio: 0.87
-Max drawdown: -18.45%
-Win rate:     52.10%
-Total trades: 47
+CAGR:         42.10%
+Sharpe ratio: 1.21
+Max drawdown: -28.34%
+Win rate:     48.30%
+Total trades: 19
 ```
 
 ---
@@ -154,8 +159,13 @@ Total trades: 47
 ### Compare against a benchmark
 
 ```python
+bm_df = yf.download(
+    "^GSPC", period="1y", interval="1d",
+    auto_adjust=False, multi_level_index=False, progress=False,
+)
+bm_df.columns = bm_df.columns.str.lower()
 bm = MarketData()
-bm.load(pd.read_csv("spy.csv", index_col=0, parse_dates=True))
+bm.load(bm_df)
 
 result = client.backtest(strategy, config, md, benchmark=bm)
 print(f"Alpha: {result.statistics.alpha:.4f}")

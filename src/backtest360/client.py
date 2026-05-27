@@ -126,8 +126,15 @@ class BacktestClient:
 
     Usage::
 
+        import yfinance as yf
         from backtest360 import BacktestClient, BacktestConfig, MarketData
         from backtest360.strategies import rsi_threshold_long
+
+        df = yf.download(
+            "BTC-USD", period="1y", interval="1d",
+            auto_adjust=False, multi_level_index=False, progress=False,
+        )
+        df.columns = df.columns.str.lower()
 
         md = MarketData()
         md.load(df)
