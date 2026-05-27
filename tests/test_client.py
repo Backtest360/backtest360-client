@@ -1,4 +1,4 @@
-"""Tests for Backtest360Error and Client.__init__ / Client._request."""
+"""Tests for Backtest360Error, Client, and Result."""
 
 from __future__ import annotations
 
@@ -6,9 +6,18 @@ import json
 import os
 from unittest.mock import MagicMock, patch
 
+import pandas as pd
 import pytest
 
-from backtest360.client import Backtest360Error, Client
+from backtest360.client import (
+    Backtest360Error,
+    Client,
+    Result,
+    _build_backtest_body,
+    _build_execution_wire,
+    _ohlcv_to_wire,
+)
+from backtest360.strategy import Costs, Execution, Risk, Sizing, Strategy
 
 
 # ---------------------------------------------------------------------------
@@ -303,3 +312,451 @@ def test_version_propagates_error():
         with pytest.raises(Backtest360Error) as exc_info:
             c.version()
     assert exc_info.value.status == 401
+
+
+# ---------------------------------------------------------------------------
+# Client.list_indicators / list_strategies
+# ---------------------------------------------------------------------------
+
+
+def test_list_indicators_list_response():
+    c = Client(api_key="key")
+    payload = [{"name": "rsi"}, {"name": "sma"}]
+    mock_ctx, _, _ = _mock_http_context("GET", 200, payload)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.list_indicators()
+    assert result == payload
+
+
+def test_list_indicators_wrapped_response():
+    c = Client(api_key="key")
+    payload = {"indicators": [{"name": "rsi"}], "total": 1}
+    mock_ctx, _, _ = _mock_http_context("GET", 200, payload)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.list_indicators()
+    assert result == [{"name": "rsi"}]
+
+
+def test_list_indicators_empty():
+    c = Client(api_key="key")
+    mock_ctx, _, _ = _mock_http_context("GET", 200, [])
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.list_indicators()
+    assert result == []
+
+
+def test_list_strategies_list_response():
+    c = Client(api_key="key")
+    payload = [{"name": "rsi_threshold_long"}, {"name": "ma_crossover"}]
+    mock_ctx, _, _ = _mock_http_context("GET", 200, payload)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.list_strategies()
+    assert result == payload
+
+
+def test_list_strategies_wrapped_response():
+    c = Client(api_key="key")
+    payload = {"strategies": [{"name": "rsi_threshold_long"}]}
+    mock_ctx, _, _ = _mock_http_context("GET", 200, payload)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.list_strategies()
+    assert result == [{"name": "rsi_threshold_long"}]
+
+
+def test_list_indicators_correct_path():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("GET", 200, [])
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.list_indicators()
+    assert mock_http.get.call_args[0][0].endswith("/api/indicators")
+
+
+def test_list_strategies_correct_path():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("GET", 200, [])
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.list_strategies()
+    assert mock_http.get.call_args[0][0].endswith("/api/strategies")
+
+
+# ---------------------------------------------------------------------------
+# Result
+# ---------------------------------------------------------------------------
+
+_FIXTURE_RESULT = {
+    "stats": {"Sharpe": 1.42, "CAGR": 0.089},
+    "series": {
+        "dates":   ["2020-01-02", "2020-01-03", "2020-01-04"],
+        "equity":  [1.0, 1.01, 1.02],
+        "returns": [0.0, 0.01, 0.01],
+        "signals": [0, 1, 1],
+    },
+    "trades": [
+        {"entry_date": "2020-01-03", "exit_date": "2020-01-04",
+         "direction": 1, "return_net": 0.01},
+    ],
+    "monthly_returns": [{"period": "2020-01-31", "return": 0.02}],
+}
+
+
+def test_result_stats():
+    r = Result(_FIXTURE_RESULT)
+    assert r.stats["Sharpe"] == 1.42
+    assert r.stats["CAGR"] == 0.089
+
+
+def test_result_trades():
+    r = Result(_FIXTURE_RESULT)
+    assert len(r.trades) == 1
+    assert r.trades[0]["direction"] == 1
+    assert r.trades[0]["return_net"] == 0.01
+
+
+def test_result_equity_is_series():
+    r = Result(_FIXTURE_RESULT)
+    eq = r.equity
+    assert isinstance(eq, pd.Series)
+    assert len(eq) == 3
+    assert eq.iloc[0] == 1.0
+    assert eq.iloc[-1] == 1.02
+    assert eq.name == "equity"
+
+
+def test_result_equity_datetime_index():
+    r = Result(_FIXTURE_RESULT)
+    assert r.equity.index.dtype == "datetime64[ns]"
+
+
+def test_result_returns_is_series():
+    r = Result(_FIXTURE_RESULT)
+    ret = r.returns
+    assert isinstance(ret, pd.Series)
+    assert ret.name == "returns"
+    assert list(ret.values) == [0.0, 0.01, 0.01]
+
+
+def test_result_signals_is_series():
+    r = Result(_FIXTURE_RESULT)
+    sig = r.signals
+    assert isinstance(sig, pd.Series)
+    assert sig.name == "signals"
+    assert list(sig.values) == [0, 1, 1]
+
+
+def test_result_raw():
+    r = Result(_FIXTURE_RESULT)
+    assert r.raw is _FIXTURE_RESULT
+    assert "monthly_returns" in r.raw
+
+
+def test_result_empty_series_fields():
+    r = Result({"stats": {}, "trades": []})
+    assert r.equity.empty
+    assert r.returns.empty
+    assert r.signals.empty
+
+
+def test_result_importable_from_package():
+    from backtest360 import Result as R  # noqa: F401
+    assert R is Result
+
+
+# ---------------------------------------------------------------------------
+# _ohlcv_to_wire
+# ---------------------------------------------------------------------------
+
+
+def _make_df(n=3):
+    idx = pd.date_range("2020-01-01", periods=n, freq="D")
+    return pd.DataFrame({
+        "open":  [1.0] * n,
+        "high":  [1.1] * n,
+        "low":   [0.9] * n,
+        "close": [1.05] * n,
+        "volume": [1000.0] * n,
+    }, index=idx)
+
+
+def test_ohlcv_to_wire_keys():
+    df = _make_df()
+    w = _ohlcv_to_wire(df)
+    assert "dates" in w
+    assert "open" in w
+    assert "high" in w
+    assert "low" in w
+    assert "close" in w
+    assert "volume" in w
+
+
+def test_ohlcv_to_wire_no_volume():
+    df = _make_df().drop(columns=["volume"])
+    w = _ohlcv_to_wire(df)
+    assert "volume" not in w
+
+
+def test_ohlcv_to_wire_dates_are_strings():
+    df = _make_df()
+    w = _ohlcv_to_wire(df)
+    assert all(isinstance(d, str) for d in w["dates"])
+
+
+def test_ohlcv_to_wire_lengths_match():
+    n = 5
+    df = _make_df(n)
+    w = _ohlcv_to_wire(df)
+    assert len(w["dates"]) == n
+    assert len(w["open"]) == n
+    assert len(w["close"]) == n
+
+
+# ---------------------------------------------------------------------------
+# _build_execution_wire
+# ---------------------------------------------------------------------------
+
+
+def test_build_execution_wire_empty():
+    w = _build_execution_wire(None, None, None, None)
+    assert w == {}
+
+
+def test_build_execution_wire_execution_only():
+    w = _build_execution_wire(Execution(signal_frequency="hourly"), None, None, None)
+    assert w["signal_frequency"] == "hourly"
+    assert "slippage_bps" not in w
+
+
+def test_build_execution_wire_costs_only():
+    w = _build_execution_wire(None, Costs(slippage_bps=5.0), None, None)
+    assert w["slippage_bps"] == 5.0
+    assert "signal_frequency" not in w
+
+
+def test_build_execution_wire_all():
+    w = _build_execution_wire(
+        Execution(signal_frequency="daily"),
+        Costs(slippage_bps=2.5, fee_pct=0.001),
+        Risk(stop="trailing_atr", value=2.5, atr_period=14),
+        Sizing(weight=0.5, vol_target=0.15, leverage_limit=2.0),
+    )
+    assert w["signal_frequency"] == "daily"
+    assert w["slippage_bps"] == 2.5
+    assert w["fee_pct"] == 0.001
+    assert w["stop_type"] == "trailing_atr"
+    assert w["stop_value"] == 2.5
+    assert w["stop_atr_period"] == 14
+    assert w["position_weight"] == 0.5
+    assert w["vol_target"] == 0.15
+    assert w["leverage_limit"] == 2.0
+
+
+# ---------------------------------------------------------------------------
+# Client.validate_strategy
+# ---------------------------------------------------------------------------
+
+
+def test_validate_strategy_posts_to_correct_path():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, {"is_valid": True})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.validate_strategy(Strategy.rsi_threshold_long())
+    url = mock_http.post.call_args[0][0]
+    assert url.endswith("/api/validate-strategy")
+
+
+def test_validate_strategy_sends_strategy_wire():
+    c = Client(api_key="key")
+    strat = Strategy.rsi_threshold_long()
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, {"is_valid": True})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.validate_strategy(strat)
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "condition_tree" in body
+    assert "indicators" in body
+
+
+def test_validate_strategy_returns_dict():
+    c = Client(api_key="key")
+    resp = {"is_valid": True, "errors": [], "warnings": []}
+    mock_ctx, _, _ = _mock_http_context("POST", 200, resp)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.validate_strategy(Strategy.rsi_threshold_long())
+    assert result["is_valid"] is True
+
+
+def test_validate_strategy_propagates_error():
+    c = Client(api_key="key")
+    mock_ctx, _, _ = _mock_http_context("POST", 422, {"detail": "Invalid indicator ref."})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c.validate_strategy(Strategy.rsi_threshold_long())
+    assert exc_info.value.status == 422
+
+
+# ---------------------------------------------------------------------------
+# Client.latest_signal
+# ---------------------------------------------------------------------------
+
+
+def test_latest_signal_posts_to_correct_path():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, {"signal": 1})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.latest_signal(Strategy.rsi_threshold_long(), _make_df())
+    url = mock_http.post.call_args[0][0]
+    assert url.endswith("/api/latest-signal")
+
+
+def test_latest_signal_body_has_strategy_and_data():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, {"signal": 0})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.latest_signal(Strategy.rsi_threshold_long(), _make_df())
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "strategy" in body
+    assert "data_source" in body
+    assert "ohlcv" in body["data_source"]
+
+
+def test_latest_signal_returns_dict():
+    c = Client(api_key="key")
+    resp = {"signal": 1, "long_entry_fired": True, "long_exit_fired": False}
+    mock_ctx, _, _ = _mock_http_context("POST", 200, resp)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.latest_signal(Strategy.rsi_threshold_long(), _make_df())
+    assert result["signal"] == 1
+    assert result["long_entry_fired"] is True
+
+
+# ---------------------------------------------------------------------------
+# Client.backtest_raw
+# ---------------------------------------------------------------------------
+
+
+def test_backtest_raw_sends_payload_unchanged():
+    c = Client(api_key="key")
+    payload = {"strategy": {"condition_tree": None, "indicators": []},
+               "data_source": {"ohlcv": {}}}
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, {"status": "success"})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest_raw(payload)
+    sent = json.loads(mock_http.post.call_args[1]["content"])
+    assert sent == payload
+
+
+def test_backtest_raw_returns_full_response():
+    c = Client(api_key="key")
+    resp = {"status": "success", "result": {"stats": {"Sharpe": 1.5}}}
+    mock_ctx, _, _ = _mock_http_context("POST", 200, resp)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.backtest_raw({})
+    assert result == resp
+
+
+def test_backtest_raw_posts_to_api_backtest():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, {})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest_raw({"x": 1})
+    url = mock_http.post.call_args[0][0]
+    assert url.endswith("/api/backtest")
+
+
+# ---------------------------------------------------------------------------
+# Client.backtest
+# ---------------------------------------------------------------------------
+
+
+def _backtest_response(sharpe=1.42):
+    return {
+        "status": "success",
+        "result": {
+            "stats": {"Sharpe": sharpe},
+            "series": {
+                "dates": ["2020-01-02", "2020-01-03"],
+                "equity": [1.0, 1.01],
+                "returns": [0.0, 0.01],
+                "signals": [0, 1],
+            },
+            "trades": [],
+        },
+    }
+
+
+def test_backtest_returns_result():
+    c = Client(api_key="key")
+    mock_ctx, _, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.backtest(Strategy.rsi_threshold_long(), _make_df())
+    assert isinstance(result, Result)
+    assert result.stats["Sharpe"] == 1.42
+
+
+def test_backtest_posts_strategy_and_data():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest(Strategy.rsi_threshold_long(), _make_df())
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "strategy" in body
+    assert "data_source" in body
+
+
+def test_backtest_with_execution_and_costs():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest(
+            Strategy.rsi_threshold_long(), _make_df(),
+            execution=Execution(signal_frequency="daily"),
+            costs=Costs(slippage_bps=5.0),
+        )
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert body["execution"]["signal_frequency"] == "daily"
+    assert body["execution"]["slippage_bps"] == 5.0
+
+
+def test_backtest_with_benchmark():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest(Strategy.rsi_threshold_long(), _make_df(), benchmark=_make_df())
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "benchmark" in body
+    assert "ohlcv" in body["benchmark"]
+
+
+def test_backtest_no_benchmark_omits_field():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest(Strategy.rsi_threshold_long(), _make_df())
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "benchmark" not in body
+
+
+def test_backtest_no_execution_omits_field():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest(Strategy.rsi_threshold_long(), _make_df())
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "execution" not in body
+
+
+def test_backtest_propagates_error():
+    c = Client(api_key="key")
+    mock_ctx, _, _ = _mock_http_context("POST", 422, {"detail": "Bad strategy."})
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c.backtest(Strategy.rsi_threshold_long(), _make_df())
+    assert exc_info.value.status == 422
+
+
+def test_backtest_unwraps_result_key():
+    c = Client(api_key="key")
+    # Engine wraps in {"result": {...}} — backtest() should unwrap it
+    resp = {"status": "success", "result": {"stats": {"Sharpe": 2.0}, "series": {}, "trades": []}}
+    mock_ctx, _, _ = _mock_http_context("POST", 200, resp)
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.backtest(Strategy.rsi_threshold_long(), _make_df())
+    assert result.stats["Sharpe"] == 2.0
