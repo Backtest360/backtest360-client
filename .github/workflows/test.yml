@@ -39,9 +39,7 @@ jobs:
   integration:
     name: integration
     runs-on: ubuntu-latest
-    if: >
-      github.event_name == 'pull_request' &&
-      secrets.BACKTEST360_API_KEY != ''
+    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v4
 
