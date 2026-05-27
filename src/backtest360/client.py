@@ -142,6 +142,11 @@ class BacktestClient:
         bt = BacktestClient(api_key="b360_live_...")
         result = bt.backtest(rsi_threshold_long(), BacktestConfig(), md)
         print(result.statistics.sharpe_ratio)
+
+        import matplotlib.pyplot as plt
+        result.equity.plot(title="Equity curve")
+        plt.tight_layout()
+        plt.show()
     """
 
     def __init__(
