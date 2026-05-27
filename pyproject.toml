@@ -1,31 +1,53 @@
 [build-system]
-requires = ["hatchling", "hatch-vcs"]
+requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
 name = "backtest360-client"
-dynamic = ["version"]
-requires-python = ">=3.10"
-dependencies = [
-    "pandas>=2.0",
-    "httpx>=0.27",
-    "python-dateutil",
+version = "0.1.0a1"
+description = "Official Python client for the Backtest360 backtesting API"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Backtest360", email = "developers@backtest360.com"},
 ]
+requires-python = ">=3.9"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx>=0.27",
+    "pandas>=1.5",
+]
+
+[project.urls]
+Homepage = "https://backtest360.com"
+Documentation = "https://backtest360.github.io/backtest360-client/"
+Repository = "https://github.com/Backtest360/backtest360-client"
+"API Reference" = "https://api.backtest360.com/docs"
+Changelog = "https://github.com/Backtest360/backtest360-client/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
-    "mypy>=1.0",
-    "pandas-stubs",
     "ruff>=0.4",
-    "pdoc",
-    "hatch-vcs",
 ]
-
-[tool.hatch.version]
-source = "vcs"
-fallback-version = "0.0.0.dev0"
+docs = [
+    "mkdocs>=1.5",
+    "mkdocs-material>=9.0",
+    "mkdocstrings[python]>=0.24",
+]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/backtest360"]
@@ -36,17 +58,8 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
-[tool.mypy]
-strict = true
-python_version = "3.10"
-disallow_any_generics = false
-
-[[tool.mypy.overrides]]
-module = "backtest360._detection"
-ignore_errors = true
-
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
-    "integration: live HTTP tests against a running engine (requires BACKTEST360_API_KEY and BACKTEST360_ENGINE_URL)",
+    "integration: live HTTP tests (requires BACKTEST360_API_KEY)",
 ]

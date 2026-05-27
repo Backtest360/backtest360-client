@@ -1,282 +1,148 @@
 # backtest360-client
 
-This client accesses the Backtest360 Public API.
+[![PyPI version](https://img.shields.io/pypi/v/backtest360-client.svg)](https://pypi.org/project/backtest360-client/)
+[![CI](https://github.com/Backtest360/backtest360-client/actions/workflows/ci.yml/badge.svg)](https://github.com/Backtest360/backtest360-client/actions/workflows/ci.yml)
+[![Python versions](https://img.shields.io/pypi/pyversions/backtest360-client.svg)](https://pypi.org/project/backtest360-client/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+**Official Python client for the Backtest360 backtesting API.**
 
 Backtest your trading strategy from every angle, in minutes.
 
----
-
-## Getting started (step by step)
-
-### Step 1 — Get Python
-
-You need Python 3.10 or newer.
-
-**Windows (easiest):** Download the installer from [python.org](https://www.python.org/downloads/) and run it. Tick "Add Python to PATH" during setup.
-
-**Windows Subsystem for Linux (WSL):** Open a WSL terminal (search "Ubuntu" or "WSL" in the Start menu) and run:
-
-```bash
-sudo apt update && sudo apt install python3 python3-pip python3-venv -y
-python3 --version   # should print 3.10 or newer
-```
-
-**Mac:** Install [Homebrew](https://brew.sh), then:
-
-```bash
-brew install python@3.12
-python3 --version
-```
-
----
-
-### Step 2 — Create a virtual environment (recommended)
-
-A virtual environment keeps your project packages separate from the system Python.
-
-**Windows (Command Prompt or PowerShell):**
-
-```
-python -m venv .venv
-.venv\Scripts\activate
-```
-
-**Mac / Linux / WSL:**
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-Your prompt will show `(.venv)` when it's active. Run `deactivate` to exit it.
-
----
-
-### Step 3 — Install the SDK
-
-```bash
-pip install backtest360-client
-```
-
-That's it. No extra dependencies to manage — pandas and httpx come along automatically.
-
-The examples below fetch data with `yfinance`; install it separately with `pip install yfinance` if you want to run them as-is.
-
----
-
-### Step 4 — Get an API key
-
-Sign up at [backtest360.com](https://backtest360.com) and grab your API key from the dashboard. It starts with `b360_live_`.
-
-Set it as an environment variable so you never hardcode it in scripts:
-
-**Windows (PowerShell):**
-
-```powershell
-$env:BACKTEST360_API_KEY = "b360_live_your_key_here"
-```
-
-**Mac / Linux / WSL:**
-
-```bash
-export BACKTEST360_API_KEY="b360_live_your_key_here"
-```
-
-To make it permanent, add that `export` line to `~/.bashrc` or `~/.zshrc`.
-
----
-
-### Step 5 — Prepare your data
-
-The SDK works with any OHLCV DataFrame — Yahoo Finance, Tiingo, an IB cache export, your own CSV, anything. The DataFrame needs at least these columns (case-insensitive):
-
-```
-date,open,high,low,close,volume
-2020-01-02,296.24,300.60,295.19,300.35,33870100
-2020-01-03,297.15,300.58,296.50,297.43,36580700
-...
-```
-
-The date column should be the index (or the first column). The quickstart below fetches 1 year of BTC daily bars from Yahoo Finance — swap in any source that produces the same shape.
-
----
-
-### Step 6 — Run your first backtest
-
-Save this as `my_backtest.py` and run it with `python my_backtest.py` (or `python3 my_backtest.py` on Mac/Linux):
-
 ```python
-import os
 import yfinance as yf
-from backtest360 import BacktestClient, BacktestConfig, MarketData
-from backtest360.strategies import rsi_threshold_long
+from backtest360 import Client, Strategy
 
-# --- Fetch 1 year of BTC daily bars from Yahoo Finance ---
-df = yf.download(
-    "BTC-USD", period="1y", interval="1d",
-    auto_adjust=False, multi_level_index=False, progress=False,
-)
-df.columns = df.columns.str.lower()   # normalise to lowercase
+df = yf.download("BTC-USD", period="1y", interval="1d",
+                 auto_adjust=False, multi_level_index=False, progress=False)
+df.columns = df.columns.str.lower()
 
-# --- Wrap in MarketData (auto-detects frequency, hours, data quality) ---
-md = MarketData()
-md.load(df)
-
-# --- Pick a strategy ---
-# Enter long when RSI(14) drops below 30; exit when it rises above 70
-strategy = rsi_threshold_long(period=14, entry_threshold=30, exit_threshold=70)
-
-# --- Configure execution ---
-config = BacktestConfig(signal_frequency="daily")
-
-# --- Run ---
-client = BacktestClient()   # reads BACKTEST360_API_KEY from environment
-result = client.backtest(strategy, config, md)
-
-# --- Print results ---
-s = result.statistics
-print(f"CAGR:         {s.cagr:.2%}")
-print(f"Sharpe ratio: {s.sharpe_ratio:.2f}")
-print(f"Max drawdown: {s.max_drawdown:.2%}")
-print(f"Win rate:     {s.win_rate:.2%}")
-print(f"Total trades: {s.total_trades}")
-
-# --- Plot equity curve ---
-import matplotlib.pyplot as plt
-
-result.equity.plot(title="Equity curve — RSI(14) on BTC/USD 1y daily")
-plt.xlabel("Date")
-plt.ylabel("Cumulative return")
-plt.tight_layout()
-plt.show()
-```
-
-Output varies by fetch date (BTC is live data). Approximate values for a recent 1-year window:
-
-```
-CAGR:         42.10%
-Sharpe ratio: 1.21
-Max drawdown: -28.34%
-Win rate:     48.30%
-Total trades: 19
+result = Client(api_key="b360_live_...").backtest(Strategy.rsi_threshold_long(), df)
+print(result.stats["Sharpe"])
+result.equity.plot(title="Equity curve")
 ```
 
 ---
 
-## What's next?
+## Install
 
-### Compare against a benchmark
-
-```python
-bm_df = yf.download(
-    "^GSPC", period="1y", interval="1d",
-    auto_adjust=False, multi_level_index=False, progress=False,
-)
-bm_df.columns = bm_df.columns.str.lower()
-bm = MarketData()
-bm.load(bm_df)
-
-result = client.backtest(strategy, config, md, benchmark=bm)
-print(f"Alpha: {result.statistics.alpha:.4f}")
-print(f"Beta:  {result.statistics.beta:.2f}")
+```bash
+pip install --pre backtest360-client   # while on alpha
 ```
 
-### Try a different strategy
+Requires Python 3.9+. The only runtime dependencies are `httpx` and `pandas`.
 
-Four starter templates ship with the SDK:
+## Get an API key
 
-```python
-from backtest360.strategies import rsi_threshold_long, sma_crossover, donchian_breakout, buy_and_hold
-
-s1 = rsi_threshold_long(period=14, entry_threshold=30, exit_threshold=70)
-s2 = sma_crossover(fast=10, slow=50)
-s3 = donchian_breakout(period=20)
-s4 = buy_and_hold()   # always-long baseline
-```
-
-### Add costs and risk controls
+Sign up at [backtest360.com/dashboard](https://backtest360.com/dashboard) and copy your key.
+Store it in the `BACKTEST360_API_KEY` environment variable or pass it directly:
 
 ```python
-from backtest360.dtos import ExecutionCosts, RiskControls
-
-config = BacktestConfig(
-    signal_frequency="daily",
-    costs=ExecutionCosts(slippage_bps=5, fee_pct=0.001),
-    risk=RiskControls(stop_type="atr", stop_value=2.0),
-)
-```
-
-### Check today's signal
-
-```python
-sig = client.latest_signal(strategy, config, md)
-print(sig.signal)           # 1 = long, 0 = flat, -1 = short
-print(sig.bar_timestamp)    # when the signal fired
+client = Client(api_key="b360_live_...")
+# or: export BACKTEST360_API_KEY=b360_live_...
+client = Client()
 ```
 
 ---
 
-## Build your own strategy
+## Features
 
-Use `Indicator` and `Strategy` to compose strategies from any of the engine's registered indicators:
-
-```python
-from backtest360.dtos import Indicator, Strategy
-
-strategy = Strategy(
-    name="my_strategy",
-    indicators=[
-        Indicator(id="rsi",  name="rsi",  params={"period": 14}, upstream=[]),
-        Indicator(id="sma",  name="sma",  params={"period": 200}, upstream=[]),
-    ],
-    condition_tree={
-        "long_entry":  {"op": "and", "args": [
-            {"op": "leaf", "expr": "rsi < 40"},
-            {"op": "leaf", "expr": "close > sma"},
-        ]},
-        "long_exit":   {"op": "leaf", "expr": "rsi > 60"},
-        "short_entry": None,
-        "short_exit":  None,
-    },
-)
-```
-
-Call `client.list_indicators()` to see all available indicator ids and their parameter schemas.
+- Hand-written wrapper over the public REST API — no generated code, no schema sync
+- Built-in strategy templates (`Strategy.rsi_threshold_long()`, `Strategy.ma_crossover()`, …)
+- Grouped-knob classes: `Execution`, `Costs`, `Risk`, `Sizing` — set only what you need
+- Pandas-native — pass a DataFrame, get a DataFrame back (`result.equity`, `result.returns`)
+- Raw-API escape hatch for full control (`client.backtest_raw({...})`)
+- Strict type hints + `py.typed` — first-class IDE and mypy support
+- MIT licensed
 
 ---
 
-## Error handling
+## Common patterns
+
+### Custom strategy
 
 ```python
-from backtest360.exceptions import (
-    AuthenticationError, EngineError, QuotaExceededError, RateLimitError, ValidationError,
+from backtest360 import Client, Strategy, Execution, Costs, Risk, Sizing
+
+strat = Strategy(
+    name="rsi_mean_reversion",
+    long_entry="rsi < 30",
+    long_exit="rsi > 70",
+    indicators=[Strategy.indicator("rsi", period=14)],
 )
+
+result = Client(api_key="b360_live_...").backtest(
+    strat, df,
+    benchmark=spy_df,
+    execution=Execution(entry="open", exit="close", signal_frequency="daily"),
+    costs=Costs(slippage_bps=2.5, fee_pct=0.001),
+    risk=Risk(stop="trailing_atr", value=2.5, atr_period=14, max_drawdown=0.25),
+    sizing=Sizing(weight=1.0, vol_target=0.15, leverage_limit=2.0),
+)
+
+print(result.stats["Sharpe"], result.stats["Max Drawdown"])
+for t in result.trades[:5]:
+    print(t["entry_date"], t["direction"], t["return_net"])
+```
+
+> **Indicator library** (names, params, output columns):
+> https://api.backtest360.com/docs#tag/Reference/operation/list_indicators_api_indicators_get
+>
+> **Strategy templates** (full list):
+> https://api.backtest360.com/docs#tag/Reference/operation/list_strategies_api_strategies_get
+
+### Raw API escape hatch
+
+For users who want exact control with the API docs open:
+
+```python
+resp = Client(api_key="...").backtest_raw({
+    "strategy":    {"condition_tree": {...}, "indicators": [...]},
+    "data_source": {"ohlcv": {...}},
+    "execution":   {"signal_frequency": "daily"},
+})
+```
+
+### Error handling
+
+```python
+from backtest360 import Backtest360Error
 
 try:
-    result = client.backtest(strategy, config, md)
-except AuthenticationError:
-    print("Bad or missing API key. Check BACKTEST360_API_KEY.")
-except QuotaExceededError as e:
-    print(f"Daily quota exhausted ({e.used}/{e.limit}). Upgrade your plan.")
-except RateLimitError as e:
-    print(f"Too many requests. Retry in {e.retry_after}s.")
-except ValidationError as e:
-    print("Strategy validation failed:", e.issues)
-except EngineError as e:
-    print(f"Engine error {e.status}: {e}")
+    result = client.backtest(strategy, df)
+except Backtest360Error as e:
+    if e.status == 401:
+        print("Invalid or expired API key — renew at backtest360.com/dashboard")
+    elif e.status == 429:
+        print("Rate limited — retry after a moment")
+    elif e.status == 422:
+        print("Strategy validation failed:", e.body)
+    else:
+        raise   # unexpected — let it propagate
 ```
 
 ---
 
-## Requirements
+## Versioning
 
-- Python 3.10+
-- pandas >= 2.0
-- httpx >= 0.27
+`MAJOR.MINOR.PATCH`. Pre-1.0 (`0.x.y`): the API may move between minor versions.
+Pre-release suffixes: `aN` (alpha), `bN` (beta), `rcN` (release candidate).
+See [CHANGELOG.md](CHANGELOG.md) for the release history.
 
 ---
 
-## Links
+## Full documentation
 
-- [backtest360.com](https://backtest360.com) — sign up, manage API keys, run strategies via the GUI
-- [API reference](https://backtest360.com/docs/api) — full endpoint documentation
+Full documentation → https://backtest360.github.io/backtest360-client/
+
+Engine API reference → https://api.backtest360.com/docs
+
+## Contributing / issues
+
+Bug reports and feature requests welcome — open an issue on
+[GitHub](https://github.com/Backtest360/backtest360-client/issues) or email
+developers@backtest360.com.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

@@ -1,0 +1,78 @@
+site_name: backtest360-client
+site_description: Official Python client for the Backtest360 backtesting API
+site_url: https://backtest360.github.io/backtest360-client/
+repo_url: https://github.com/Backtest360/backtest360-client
+repo_name: Backtest360/backtest360-client
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Dark mode
+    - scheme: slate
+      primary: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_bases: false
+
+nav:
+  - Home: index.md
+  - Getting started:
+    - Install: getting-started/install.md
+    - API key: getting-started/api-key.md
+    - First backtest: getting-started/first-backtest.md
+  - Tutorials:
+    - RSI mean reversion: tutorials/mean-reversion.md
+    - Compare strategies: tutorials/compare-strategies.md
+    - With benchmark: tutorials/with-benchmark.md
+  - How-to:
+    - Custom slippage: how-to/custom-slippage.md
+    - Use your own data: how-to/use-your-own-data.md
+    - Handle errors: how-to/handle-errors.md
+    - Set stops: how-to/set-stops.md
+  - API reference:
+    - Client: reference/client.md
+    - Strategy: reference/strategy.md
+    - Execution: reference/execution.md
+    - Costs: reference/costs.md
+    - Risk: reference/risk.md
+    - Sizing: reference/sizing.md
+    - Result: reference/result.md
+    - Exceptions: reference/exceptions.md
+  - Concepts:
+    - Strategy shape: concepts/strategy-shape.md
+    - Signal vs execution: concepts/signal-vs-execution.md
+    - Result anatomy: concepts/result-anatomy.md
+    - Versioning: concepts/versioning.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
