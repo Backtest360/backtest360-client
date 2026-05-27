@@ -421,7 +421,7 @@ def test_result_equity_is_series():
 
 def test_result_equity_datetime_index():
     r = Result(_FIXTURE_RESULT)
-    assert r.equity.index.dtype == "datetime64[ns]"
+    assert pd.api.types.is_datetime64_any_dtype(r.equity.index)
 
 
 def test_result_returns_is_series():
