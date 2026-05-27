@@ -2,11 +2,11 @@
 
 Requires two environment variables:
   BACKTEST360_API_KEY   — a valid customer key for the target engine
-  BACKTEST360_ENGINE_URL — engine base URL, e.g. http://178.105.18.196:8000
+  BACKTEST360_ENGINE_URL — engine base URL, e.g. http://your-engine-host:8000
                            (defaults to https://api.backtest360.com)
 
 Run with:
-  BACKTEST360_API_KEY=<key> BACKTEST360_ENGINE_URL=http://178.105.18.196:8000 \
+  BACKTEST360_API_KEY=<key> BACKTEST360_ENGINE_URL=http://your-engine-host:8000 \
       pytest -q -m integration
 """
 
