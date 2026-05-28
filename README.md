@@ -17,7 +17,7 @@ df = yf.download("BTC-USD", period="1y", interval="1d",
                  auto_adjust=False, multi_level_index=False, progress=False)
 df.columns = df.columns.str.lower()
 
-result = Client(api_key="b360_live_...").backtest(Strategy.rsi_threshold_long(), df)
+result = Client(api_key="b360_...").backtest(Strategy.rsi_threshold_long(), df)
 print(result.stats["Sharpe"])
 result.equity.plot(title="Equity curve")
 ```
@@ -38,8 +38,8 @@ Sign up at [backtest360.com/dashboard](https://backtest360.com/dashboard) and co
 Store it in the `BACKTEST360_API_KEY` environment variable or pass it directly:
 
 ```python
-client = Client(api_key="b360_live_...")
-# or: export BACKTEST360_API_KEY=b360_live_...
+client = Client(api_key="b360_...")
+# or: export BACKTEST360_API_KEY=b360_...
 client = Client()
 ```
 
@@ -71,7 +71,7 @@ strat = Strategy(
     indicators=[Strategy.indicator("rsi", period=14)],
 )
 
-result = Client(api_key="b360_live_...").backtest(
+result = Client(api_key="b360_...").backtest(
     strat, df,
     benchmark=spy_df,
     execution=Execution(entry="open", exit="close", signal_frequency="daily"),

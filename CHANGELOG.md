@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.0a2] — 2026-05-28
+
+### Breaking
+
+- Key prefix changed from `bk_live_` to `b360_`. All previously issued keys are invalid — obtain a new key from [backtest360.com/dashboard](https://backtest360.com/dashboard).
+- `Client.version()` now calls `GET /api/version` instead of `GET /version`.
+
+### Added
+
+- `BACKTEST360_ENGINE_URL` environment variable: sets the engine base URL when no `base_url` kwarg is passed. Prod default (`https://api.backtest360.com`) is used when neither is set.
+- `BACKTEST360_API_KEY` environment variable: `Client()` with no kwargs now works when this variable is set (e.g. under Doppler). Missing both raises `Backtest360Error(code="SDK_NO_API_KEY")`.
+- `Backtest360Error.code`: machine-readable error code string (e.g. `SDK_NO_API_KEY`, `SDK_PATH_FORBIDDEN`).
+- `Client._request` path guard: raises `Backtest360Error(code="SDK_PATH_FORBIDDEN")` if `path` does not start with `/api/`. Prevents SDK from accidentally reaching admin routes.
+- Public-surface lock test: asserts `Client` exposes exactly the seven documented public methods.
+
+---
+
 ## [0.1.0a1] — 2026-05-27
 
 First public release of the rewritten SDK. Prior internal alphas have been
