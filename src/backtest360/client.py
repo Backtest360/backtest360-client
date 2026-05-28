@@ -32,7 +32,8 @@ class Backtest360Error(Exception):
 
     Args:
         message: Human-readable description of the error.
-        status: HTTP status code returned by the engine.
+        status: HTTP status code returned by the engine (0 for client-side errors).
+        code: Machine-readable error code (e.g. ``SDK_NO_API_KEY``).
         body: Parsed response body (dict) or raw text if JSON parsing failed.
         request_id: Value of the ``X-Request-ID`` response header, if present.
 
@@ -53,11 +54,13 @@ class Backtest360Error(Exception):
         message: str,
         *,
         status: int,
+        code: str | None = None,
         body: dict | str | None = None,
         request_id: str | None = None,
     ) -> None:
         super().__init__(message)
         self.status = status
+        self.code = code
         self.body = body
         self.request_id = request_id
 
@@ -145,8 +148,9 @@ class Client:
     Args:
         api_key: Your Backtest360 API key. Falls back to the
             ``BACKTEST360_API_KEY`` environment variable. Raises
-            ``Backtest360Error(status=401)`` immediately if neither is set.
-        base_url: Engine base URL. Defaults to ``https://api.backtest360.com``.
+            ``Backtest360Error(code="SDK_NO_API_KEY")`` immediately if neither is set.
+        base_url: Engine base URL. Falls back to ``BACKTEST360_ENGINE_URL`` env var,
+            then ``https://api.backtest360.com``.
         timeout: Request timeout in seconds. Defaults to 300 (backtests can
             be slow).
 
@@ -168,19 +172,22 @@ class Client:
     def __init__(
         self,
         api_key: str | None = None,
-        base_url: str = _DEFAULT_BASE_URL,
+        base_url: str | None = None,
         timeout: float = _TIMEOUT_SECONDS,
     ) -> None:
-        resolved = api_key or os.environ.get("BACKTEST360_API_KEY", "")
-        if not resolved:
+        resolved_key = api_key or os.environ.get("BACKTEST360_API_KEY", "")
+        if not resolved_key:
             raise Backtest360Error(
                 "No API key provided. Pass api_key=... or set the "
                 "BACKTEST360_API_KEY environment variable. "
                 "Sign up at backtest360.com.",
                 status=401,
+                code="SDK_NO_API_KEY",
             )
-        self._api_key = resolved
-        self._base_url = base_url.rstrip("/")
+        self._api_key = resolved_key
+        self._base_url = (
+            base_url or os.environ.get("BACKTEST360_ENGINE_URL") or _DEFAULT_BASE_URL
+        ).rstrip("/")
         self._timeout = timeout
 
     def _headers(self) -> dict[str, str]:
@@ -194,8 +201,14 @@ class Client:
         """Send an HTTP request and return the parsed JSON response.
 
         Raises:
-            Backtest360Error: On any non-2xx response.
+            Backtest360Error: On any non-2xx response or a forbidden path.
         """
+        if not path.startswith("/api/"):
+            raise Backtest360Error(
+                f"Path '{path}' is not permitted. SDK only accesses /api/* endpoints.",
+                status=0,
+                code="SDK_PATH_FORBIDDEN",
+            )
         url = f"{self._base_url}{path}"
         with httpx.Client(timeout=self._timeout) as http:
             if method == "GET":
@@ -240,7 +253,7 @@ class Client:
     # ---------------------------------------------------------------------------
 
     def version(self) -> dict:
-        """Return engine version info from ``GET /version``.
+        """Return engine version info from ``GET /api/version``.
 
         Returns:
             Dict with at minimum ``{"version": "x.y.z"}``. May include
@@ -251,7 +264,7 @@ class Client:
             >>> print(info["version"])
             0.5.3
         """
-        return self._request("GET", "/version")
+        return self._request("GET", "/api/version")
 
     def list_indicators(self) -> list[dict]:
         """Return the engine's indicator library from ``GET /api/indicators``.

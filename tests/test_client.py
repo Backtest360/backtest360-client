@@ -122,8 +122,8 @@ def test_importable_from_package():
 
 
 def test_client_init_explicit_key():
-    c = Client(api_key="b360_live_testkey")
-    assert c._api_key == "b360_live_testkey"
+    c = Client(api_key="b360_testkey")
+    assert c._api_key == "b360_testkey"
 
 
 def test_client_init_from_env(monkeypatch):
@@ -143,6 +143,7 @@ def test_client_no_key_raises(monkeypatch):
     with pytest.raises(Backtest360Error) as exc_info:
         Client()
     assert exc_info.value.status == 401
+    assert exc_info.value.code == "SDK_NO_API_KEY"
     assert "API key" in str(exc_info.value)
 
 
@@ -186,11 +187,11 @@ def test_request_get_happy_path():
     c = Client(api_key="key")
     mock_ctx, mock_http, _ = _mock_http_context("GET", 200, {"version": "1.0"})
     with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
-        result = c._request("GET", "/version")
+        result = c._request("GET", "/api/version")
     assert result == {"version": "1.0"}
     mock_http.get.assert_called_once()
     call_url = mock_http.get.call_args[0][0]
-    assert call_url == "https://api.backtest360.com/version"
+    assert call_url == "https://api.backtest360.com/api/version"
 
 
 def test_request_post_happy_path():
@@ -219,7 +220,7 @@ def test_request_401_raises_backtest360error():
     mock_ctx, _, _ = _mock_http_context("GET", 401, body)
     with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
         with pytest.raises(Backtest360Error) as exc_info:
-            c._request("GET", "/version")
+            c._request("GET", "/api/version")
     assert exc_info.value.status == 401
     assert exc_info.value.body == body
 
@@ -250,7 +251,7 @@ def test_request_non_json_body_stored_as_string():
     mock_ctx, _, _ = _mock_http_context("GET", 502, text="<html>Bad Gateway</html>")
     with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
         with pytest.raises(Backtest360Error) as exc_info:
-            c._request("GET", "/version")
+            c._request("GET", "/api/version")
     assert exc_info.value.status == 502
     assert exc_info.value.body == "<html>Bad Gateway</html>"
 
@@ -292,7 +293,7 @@ def test_version_hits_correct_path():
     with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
         c.version()
     call_url = mock_http.get.call_args[0][0]
-    assert call_url.endswith("/version")
+    assert call_url.endswith("/api/version")
 
 
 def test_version_passes_through_raw_dict():
@@ -760,3 +761,69 @@ def test_backtest_unwraps_result_key():
     with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
         result = c.backtest(Strategy.rsi_threshold_long(), _make_df())
     assert result.stats["Sharpe"] == 2.0
+
+
+# ---------------------------------------------------------------------------
+# Env-routing tests (Session 4)
+# ---------------------------------------------------------------------------
+
+
+def test_engine_url_env_var_used_when_no_kwarg(monkeypatch):
+    monkeypatch.setenv("BACKTEST360_ENGINE_URL", "http://dev.example.com:8000")
+    c = Client(api_key="key")
+    assert c._base_url == "http://dev.example.com:8000"
+
+
+def test_engine_url_kwarg_wins_over_env_var(monkeypatch):
+    monkeypatch.setenv("BACKTEST360_ENGINE_URL", "http://dev.example.com:8000")
+    c = Client(api_key="key", base_url="http://localhost:8000")
+    assert c._base_url == "http://localhost:8000"
+
+
+def test_engine_url_defaults_to_prod_when_no_env(monkeypatch):
+    monkeypatch.delenv("BACKTEST360_ENGINE_URL", raising=False)
+    c = Client(api_key="key")
+    assert c._base_url == "https://api.backtest360.com"
+
+
+def test_api_key_env_var_used_when_no_kwarg(monkeypatch):
+    monkeypatch.setenv("BACKTEST360_API_KEY", "b360_envkey")
+    c = Client()
+    assert c._api_key == "b360_envkey"
+
+
+def test_api_key_kwarg_wins_over_env_var(monkeypatch):
+    monkeypatch.setenv("BACKTEST360_API_KEY", "b360_envkey")
+    c = Client(api_key="b360_explicit")
+    assert c._api_key == "b360_explicit"
+
+
+def test_request_non_api_path_raises_path_forbidden():
+    c = Client(api_key="key")
+    with pytest.raises(Backtest360Error) as exc_info:
+        c._request("GET", "/admin/tenants")
+    assert exc_info.value.code == "SDK_PATH_FORBIDDEN"
+    assert exc_info.value.status == 0
+
+
+def test_request_root_path_raises_path_forbidden():
+    c = Client(api_key="key")
+    with pytest.raises(Backtest360Error) as exc_info:
+        c._request("GET", "/health")
+    assert exc_info.value.code == "SDK_PATH_FORBIDDEN"
+
+
+# ---------------------------------------------------------------------------
+# Public surface lock
+# ---------------------------------------------------------------------------
+
+_PUBLIC_METHODS = {
+    "backtest", "backtest_raw", "latest_signal",
+    "validate_strategy", "list_strategies",
+    "list_indicators", "version",
+}
+
+
+def test_client_public_surface_locked():
+    actual = {n for n in dir(Client) if not n.startswith("_")}
+    assert actual == _PUBLIC_METHODS
