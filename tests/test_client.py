@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from unittest.mock import MagicMock, patch
 
 import pandas as pd
@@ -12,10 +13,12 @@ from backtest360.client import (
     Backtest360Error,
     Client,
     Result,
+    _build_backtest_body,
     _build_execution_wire,
     _ohlcv_to_wire,
 )
 from backtest360.strategy import Costs, Execution, Risk, Sizing, Strategy
+
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -103,7 +106,7 @@ def test_raise_and_catch():
 
 
 def test_catch_as_base_exception():
-    with pytest.raises(Backtest360Error):
+    with pytest.raises(Exception):
         raise Backtest360Error("error", status=500)
 
 
@@ -214,9 +217,9 @@ def test_request_401_raises_backtest360error():
     c = Client(api_key="bad_key")
     body = {"detail": "Invalid API key."}
     mock_ctx, _, _ = _mock_http_context("GET", 401, body)
-    patcher = patch("backtest360.client.httpx.Client", return_value=mock_ctx)
-    with patcher, pytest.raises(Backtest360Error) as exc_info:
-        c._request("GET", "/version")
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c._request("GET", "/version")
     assert exc_info.value.status == 401
     assert exc_info.value.body == body
 
@@ -225,9 +228,9 @@ def test_request_429_raises_with_status_and_body():
     c = Client(api_key="key")
     body = {"detail": {"message": "Rate limit exceeded.", "code": "RATE_LIMITED"}}
     mock_ctx, _, _ = _mock_http_context("GET", 429, body)
-    patcher = patch("backtest360.client.httpx.Client", return_value=mock_ctx)
-    with patcher, pytest.raises(Backtest360Error) as exc_info:
-        c._request("GET", "/api/backtest")
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c._request("GET", "/api/backtest")
     assert exc_info.value.status == 429
     assert exc_info.value.body == body
 
@@ -236,18 +239,18 @@ def test_request_500_raises():
     c = Client(api_key="key")
     body = {"detail": "Internal server error."}
     mock_ctx, _, _ = _mock_http_context("GET", 500, body)
-    patcher = patch("backtest360.client.httpx.Client", return_value=mock_ctx)
-    with patcher, pytest.raises(Backtest360Error) as exc_info:
-        c._request("GET", "/api/backtest")
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c._request("GET", "/api/backtest")
     assert exc_info.value.status == 500
 
 
 def test_request_non_json_body_stored_as_string():
     c = Client(api_key="key")
     mock_ctx, _, _ = _mock_http_context("GET", 502, text="<html>Bad Gateway</html>")
-    patcher = patch("backtest360.client.httpx.Client", return_value=mock_ctx)
-    with patcher, pytest.raises(Backtest360Error) as exc_info:
-        c._request("GET", "/version")
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c._request("GET", "/version")
     assert exc_info.value.status == 502
     assert exc_info.value.body == "<html>Bad Gateway</html>"
 
@@ -257,9 +260,9 @@ def test_request_propagates_request_id_header():
     body = {"detail": "Not found."}
     headers = {"x-request-id": "req-abc-999"}
     mock_ctx, _, _ = _mock_http_context("GET", 404, body, headers=headers)
-    patcher = patch("backtest360.client.httpx.Client", return_value=mock_ctx)
-    with patcher, pytest.raises(Backtest360Error) as exc_info:
-        c._request("GET", "/api/whatever")
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c._request("GET", "/api/whatever")
     assert exc_info.value.request_id == "req-abc-999"
 
 
@@ -305,9 +308,9 @@ def test_version_passes_through_raw_dict():
 def test_version_propagates_error():
     c = Client(api_key="key")
     mock_ctx, _, _ = _mock_http_context("GET", 401, {"detail": "Invalid key."})
-    patcher = patch("backtest360.client.httpx.Client", return_value=mock_ctx)
-    with patcher, pytest.raises(Backtest360Error) as exc_info:
-        c.version()
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c.version()
     assert exc_info.value.status == 401
 
 
@@ -421,7 +424,7 @@ def test_result_equity_is_series():
 
 def test_result_equity_datetime_index():
     r = Result(_FIXTURE_RESULT)
-    assert pd.api.types.is_datetime64_any_dtype(r.equity.index)
+    assert r.equity.index.dtype == "datetime64[ns]"
 
 
 def test_result_returns_is_series():
@@ -583,9 +586,9 @@ def test_validate_strategy_returns_dict():
 def test_validate_strategy_propagates_error():
     c = Client(api_key="key")
     mock_ctx, _, _ = _mock_http_context("POST", 422, {"detail": "Invalid indicator ref."})
-    patcher = patch("backtest360.client.httpx.Client", return_value=mock_ctx)
-    with patcher, pytest.raises(Backtest360Error) as exc_info:
-        c.validate_strategy(Strategy.rsi_threshold_long())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c.validate_strategy(Strategy.rsi_threshold_long())
     assert exc_info.value.status == 422
 
 
@@ -743,9 +746,9 @@ def test_backtest_no_execution_omits_field():
 def test_backtest_propagates_error():
     c = Client(api_key="key")
     mock_ctx, _, _ = _mock_http_context("POST", 422, {"detail": "Bad strategy."})
-    patcher = patch("backtest360.client.httpx.Client", return_value=mock_ctx)
-    with patcher, pytest.raises(Backtest360Error) as exc_info:
-        c.backtest(Strategy.rsi_threshold_long(), _make_df())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        with pytest.raises(Backtest360Error) as exc_info:
+            c.backtest(Strategy.rsi_threshold_long(), _make_df())
     assert exc_info.value.status == 422
 
 
