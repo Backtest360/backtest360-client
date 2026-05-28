@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.1.0] — 2026-05-28
+
+First stable release. `pip install backtest360-client` now works without `--pre`.
+Combines all alpha changes: env routing, access-surface guards, full docstrings,
+and comprehensive test coverage.
 
 ---
 
