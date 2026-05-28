@@ -43,6 +43,7 @@ class Execution:
     fill: str = "exact"
 
     def to_wire(self) -> dict:
+        """Serialise to the engine's flat execution dict."""
         return {
             "signal_frequency": self.signal_frequency,
             "entry_anchor":     self.entry,
@@ -78,6 +79,7 @@ class Costs:
     vol_slippage_lookback: int = 20
 
     def to_wire(self) -> dict:
+        """Serialise to the engine's cost dict."""
         return {
             "slippage_bps":          self.slippage_bps,
             "fee_pct":               self.fee_pct,
@@ -117,6 +119,7 @@ class Risk:
     max_drawdown: float | None = None
 
     def to_wire(self) -> dict:
+        """Serialise to the engine's risk dict."""
         d: dict = {
             "stop_reentry":      self.reentry,
             "stop_cooldown_bars": self.cooldown_bars,
@@ -156,6 +159,7 @@ class Sizing:
     leverage_limit: float = 1.0
 
     def to_wire(self) -> dict:
+        """Serialise to the engine's sizing dict."""
         d: dict = {
             "position_weight":     self.weight,
             "leverage_limit":      self.leverage_limit,
@@ -327,6 +331,15 @@ class Strategy:
         """RSI threshold — long-only mean reversion (oversold entry, overbought exit).
 
         Indicators: RSI(14). Long-only, daily bars.
+
+        Returns:
+            Strategy with ``long_entry="rsi_14 < 30"``, ``long_exit="rsi_14 > 70"``.
+
+        Example:
+            >>> result = Client(api_key="...").backtest(
+            ...     Strategy.rsi_threshold_long(), df
+            ... )
+            >>> print(result.stats["Sharpe"])
         """
         return cls(
             name="rsi_threshold_long",
@@ -340,6 +353,15 @@ class Strategy:
         """RSI mean reversion — buy oversold, sell overbought.
 
         Indicators: RSI(14). Long-only, daily bars.
+
+        Returns:
+            Strategy with ``long_entry="rsi_14 < 30"``, ``long_exit="rsi_14 > 70"``.
+
+        Example:
+            >>> result = Client(api_key="...").backtest(
+            ...     Strategy.rsi_mean_reversion(), df
+            ... )
+            >>> print(result.stats["Sharpe"])
         """
         return cls(
             name="rsi_mean_reversion",
@@ -353,6 +375,16 @@ class Strategy:
         """SMA(10) / SMA(50) crossover — classic trend-following.
 
         Indicators: SMA(10), SMA(50), CrossAbove, CrossBelow. Long-only, daily.
+
+        Returns:
+            Strategy with ``long_entry="x_above"`` (SMA10 crosses above SMA50),
+            ``long_exit="x_below"`` (SMA10 crosses below SMA50).
+
+        Example:
+            >>> result = Client(api_key="...").backtest(
+            ...     Strategy.ma_crossover(), df
+            ... )
+            >>> print(result.stats["Sharpe"])
         """
         return cls(
             name="ma_crossover",
@@ -377,6 +409,16 @@ class Strategy:
         """Absolute 6-month momentum — long when ROC(126) > 0.
 
         Indicators: ROC(126). Long-only, daily bars.
+
+        Returns:
+            Strategy with ``long_entry="roc_126 > 0"``,
+            ``long_exit="roc_126 <= 0"``.
+
+        Example:
+            >>> result = Client(api_key="...").backtest(
+            ...     Strategy.momentum_6m_long(), df
+            ... )
+            >>> print(result.stats["Sharpe"])
         """
         return cls(
             name="momentum_6m_long",

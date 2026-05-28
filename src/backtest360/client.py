@@ -259,6 +259,9 @@ class Client:
             Dict with at minimum ``{"version": "x.y.z"}``. May include
             ``min_client``, ``api_contract``, and ``latest_client`` fields.
 
+        Raises:
+            Backtest360Error: On any non-2xx response.
+
         Example:
             >>> info = client.version()
             >>> print(info["version"])
@@ -278,6 +281,9 @@ class Client:
         Returns:
             List of indicator descriptor dicts.
 
+        Raises:
+            Backtest360Error: On any non-2xx response.
+
         Example:
             >>> for ind in client.list_indicators():
             ...     print(ind["name"], ind.get("params", {}).keys())
@@ -295,6 +301,9 @@ class Client:
 
         Returns:
             List of strategy descriptor dicts.
+
+        Raises:
+            Backtest360Error: On any non-2xx response.
 
         Example:
             >>> for s in client.list_strategies():
