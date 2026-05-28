@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.1] — 2026-05-28
+
+### Fixed
+
+- Re-release of v0.1.0 under a new version number (PyPI does not allow filename reuse after deletion).
+
+---
+
 ## [0.1.0] — 2026-05-28
 
 First stable release. `pip install backtest360-client` now works without `--pre`.
