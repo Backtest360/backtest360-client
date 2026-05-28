@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.1.0a3] — 2026-05-28
+
+### Improved
+
+- Comprehensive docstrings across the full public surface (`Client`, `Strategy`, `Execution`, `Costs`, `Risk`, `Sizing`, `Result`, all template classmethods) — `Args`, `Returns`, `Raises`, and `Example` blocks on every public method. Required for `mkdocstrings` SDK reference auto-generation in the docs site.
+
+---
+
 ## [0.1.0a2] — 2026-05-28
 
 ### Breaking
