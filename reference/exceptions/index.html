@@ -1496,11 +1496,27 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>HTTP status code returned by the engine.</p>
+                <p>HTTP status code returned by the engine (0 for client-side errors).</p>
               </div>
             </td>
             <td>
                 <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>code</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Machine-readable error code (e.g. <code>SDK_NO_API_KEY</code>).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
             </td>
           </tr>
           <tr class="doc-section-item">
