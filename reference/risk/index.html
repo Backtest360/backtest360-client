@@ -1502,9 +1502,10 @@
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Stop type. One of <code>"fixed_pct"</code>, <code>"trailing_pct"</code>,
-<code>"fixed_atr"</code>, <code>"trailing_atr"</code>. <code>None</code> disables stops.
-See <code>GET /api/stop-types</code> for the full list.</p>
+                <p>Stop type. One of <code>"fixed"</code> (% from entry), <code>"trailing"</code>
+(% trailing from peak), <code>"atr"</code> (ATR multiple from entry),
+<code>"trailing_atr"</code> (ATR trailing from peak). <code>None</code> disables
+stops. See <code>GET /api/stop-types</code> for the full list.</p>
               </div>
             </td>
             <td>
@@ -1549,15 +1550,19 @@ See <code>GET /api/stop-types</code> for the full list.</p>
                 <code>reentry</code>
             </td>
             <td>
-                  <code><span title="bool">bool</span></code>
+                  <code><span title="str">str</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Re-enter after a stop-out. Default <code>True</code>.</p>
+                <p>Re-entry behaviour after a stop exit. One of
+<code>"immediate"</code> (re-enter next bar if signal is non-zero),
+<code>"next_signal"</code> (wait for signal to go flat first),
+<code>"cooldown"</code> (wait <code>cooldown_bars</code> bars). Default
+<code>"immediate"</code>.</p>
               </div>
             </td>
             <td>
-                  <code>True</code>
+                  <code>&#39;immediate&#39;</code>
             </td>
           </tr>
           <tr class="doc-section-item">
@@ -1569,8 +1574,8 @@ See <code>GET /api/stop-types</code> for the full list.</p>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Bars to wait before re-entering after a stop.
-Default <code>0</code>.</p>
+                <p>Bars to suppress re-entry after a stop exit. Only
+used when <code>reentry="cooldown"</code>. Default <code>0</code>.</p>
               </div>
             </td>
             <td>
@@ -1605,7 +1610,8 @@ Flattens the position when the running drawdown exceeds this value.
 <blockquote>
 <blockquote>
 <p>Risk(stop="trailing_atr", value=2.5, atr_period=14)
-Risk(stop="fixed_pct", value=0.05, max_drawdown=0.20)</p>
+Risk(stop="fixed", value=0.05, max_drawdown=0.20)
+Risk(stop="atr", value=2.0, reentry="cooldown", cooldown_bars=5)</p>
 </blockquote>
 </blockquote>
 </blockquote>

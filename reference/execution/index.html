@@ -1579,15 +1579,31 @@ entry anchor. Default <code>0</code> (fill on the anchor bar only).</p>
           </tr>
           <tr class="doc-section-item">
             <td>
-                <code>fill</code>
+                <code>entry_fill</code>
             </td>
             <td>
                   <code><span title="str">str</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Fill price model. One of <code>"exact"</code>, <code>"worst"</code>, <code>"best"</code>.
-Default <code>"exact"</code>.</p>
+                <p>Fill price model for entries. One of <code>"exact"</code>,
+<code>"worst"</code>, <code>"best"</code>, <code>"random"</code>. Default <code>"exact"</code>.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;exact&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>exit_fill</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Fill price model for exits. Default <code>"exact"</code>.</p>
               </div>
             </td>
             <td>
@@ -1608,7 +1624,8 @@ Default <code>"exact"</code>.</p>
   <blockquote>
 <blockquote>
 <blockquote>
-<p>Execution(entry="open", exit="close", signal_frequency="daily")</p>
+<p>Execution(entry="open", exit="close", signal_frequency="daily")
+Execution(entry_fill="worst", exit_fill="best")</p>
 </blockquote>
 </blockquote>
 </blockquote>

@@ -1028,6 +1028,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#backtest360.Client.backtest_signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        backtest_signals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#backtest360.Client.latest_signal" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1525,6 +1536,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#backtest360.Client.backtest_signals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        backtest_signals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#backtest360.Client.latest_signal" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1725,7 +1747,7 @@ result.equity.plot(title="Equity curve")</p>
 
 
 <h2 id="backtest360.Client.backtest" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">backtest</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">ohlcv</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">execution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">costs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">risk</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sizing</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">backtest</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">ohlcv</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">execution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">costs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">risk</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sizing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">market_hours</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#backtest360.Client.backtest" class="headerlink" title="Permanent link">&para;</a></h2>
 
@@ -1864,6 +1886,39 @@ Tracking Error, Up/Down Capture to <code>result.stats</code>.</p>
                   <code>None</code>
             </td>
           </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>market_hours</code>
+            </td>
+            <td>
+                  <code><span title="backtest360.strategy.MarketHours">MarketHours</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Daily anchor-hour config for sub-daily execution.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>settings</code>
+            </td>
+            <td>
+                  <code><span title="backtest360.strategy.Settings">Settings</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Engine-level run settings — RFR, RNG seed, bad-data
+policy.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
       </tbody>
     </table>
 
@@ -1919,11 +1974,12 @@ Tracking Error, Up/Down Capture to <code>result.stats</code>.</p>
   <blockquote>
 <blockquote>
 <blockquote>
-<p>from backtest360 import Client, Strategy, Execution, Costs
+<p>from backtest360 import Client, Strategy, Execution, Costs, Settings
 result = Client(api_key="...").backtest(
 ...     Strategy.rsi_threshold_long(), df,
 ...     execution=Execution(signal_frequency="daily"),
 ...     costs=Costs(slippage_bps=2.5, fee_pct=0.001),
+...     settings=Settings(risk_free_rate=0.04),
 ... )
 print(result.stats["Sharpe"])
 result.equity.plot()</p>
@@ -2052,8 +2108,269 @@ payload yourself with the API docs open.</p>
 <div class="doc doc-object doc-function">
 
 
+<h2 id="backtest360.Client.backtest_signals" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">backtest_signals</span><span class="p">(</span><span class="n">signals</span><span class="p">,</span> <span class="n">ohlcv</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">benchmark</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">execution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">costs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">risk</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sizing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">market_hours</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#backtest360.Client.backtest_signals" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Run a backtest using a pre-computed signal series.</p>
+<p>Use this when your signal logic lives outside the engine (e.g. a
+machine-learning model, a custom indicator). Pass a <code>pd.Series</code> of
+<code>{-1, 0, 1}</code> indexed by datetime; the engine skips signal generation
+and runs execution, costing, and statistics directly on your series.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>signals</code>
+            </td>
+            <td>
+                  <code><span title="pandas.Series">Series</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Integer series indexed by datetime with values in
+<code>{-1, 0, 1}</code>. <code>1</code> = long, <code>-1</code> = short, <code>0</code> = flat.
+Must cover the same date range as <code>ohlcv</code>.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>ohlcv</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>DataFrame indexed by datetime with lowercase columns
+<code>open</code>, <code>high</code>, <code>low</code>, <code>close</code> (and optionally
+<code>volume</code>).</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional label for the strategy (used in engine output).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>benchmark</code>
+            </td>
+            <td>
+                  <code><span title="pandas.DataFrame">DataFrame</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional benchmark DataFrame (same shape as <code>ohlcv</code>).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>execution</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="backtest360.strategy.Execution" href="../execution/#backtest360.Execution">Execution</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Execution timing config.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>costs</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="backtest360.strategy.Costs" href="../costs/#backtest360.Costs">Costs</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Transaction costs.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>risk</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="backtest360.strategy.Risk" href="../risk/#backtest360.Risk">Risk</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Stop-loss / drawdown protection config.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sizing</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="backtest360.strategy.Sizing" href="../sizing/#backtest360.Sizing">Sizing</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Position sizing config.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>market_hours</code>
+            </td>
+            <td>
+                  <code><span title="backtest360.strategy.MarketHours">MarketHours</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Daily anchor-hour config for sub-daily execution.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>settings</code>
+            </td>
+            <td>
+                  <code><span title="backtest360.strategy.Settings">Settings</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Engine-level run settings.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>A</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="backtest360.client.Result" href="../result/#backtest360.Result">Result</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>class:<code>Result</code> wrapping the engine response.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="backtest360.client.Backtest360Error" href="../exceptions/#backtest360.Backtest360Error">Backtest360Error</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>On any non-2xx response.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<details class="example" open>
+  <summary>Example</summary>
+  <blockquote>
+<blockquote>
+<blockquote>
+<p>import pandas as pd
+signals = pd.Series([0, 1, 1, 0, -1, 0], index=df.index)
+result = client.backtest_signals(signals, df)
+print(result.stats["Sharpe"])</p>
+</blockquote>
+</blockquote>
+</blockquote>
+</details>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
 <h2 id="backtest360.Client.latest_signal" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">latest_signal</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">ohlcv</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">execution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">costs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">risk</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sizing</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+            <code class="highlight language-python"><span class="n">latest_signal</span><span class="p">(</span><span class="n">strategy</span><span class="p">,</span> <span class="n">ohlcv</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">execution</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">costs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">risk</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sizing</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">market_hours</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">settings</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
 
 <a href="#backtest360.Client.latest_signal" class="headerlink" title="Permanent link">&para;</a></h2>
 
@@ -2167,6 +2484,38 @@ signal and per-condition diagnostics — no P&amp;L or statistics.</p>
             <td>
               <div class="doc-md-description">
                 <p>Position sizing configuration (optional).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>market_hours</code>
+            </td>
+            <td>
+                  <code><span title="backtest360.strategy.MarketHours">MarketHours</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Daily anchor-hour configuration (optional).</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>settings</code>
+            </td>
+            <td>
+                  <code><span title="backtest360.strategy.Settings">Settings</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Engine-level run settings (optional).</p>
               </div>
             </td>
             <td>
