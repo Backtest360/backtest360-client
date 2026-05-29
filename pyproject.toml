@@ -4,16 +4,16 @@ build-backend = "hatchling.build"
 
 [project]
 name = "backtest360-client"
-version = "0.1.1"
+version = "0.2.0"
 description = "Official Python client for the Backtest360 backtesting API"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Backtest360", email = "developers@backtest360.com"},
+    {name = "Backtest360", email = "hello@backtest360.com"},
 ]
 requires-python = ">=3.9"
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
@@ -36,6 +36,8 @@ Documentation = "https://backtest360.github.io/backtest360-client/"
 Repository = "https://github.com/Backtest360/backtest360-client"
 "API Reference" = "https://api.backtest360.com/docs"
 Changelog = "https://github.com/Backtest360/backtest360-client/blob/main/CHANGELOG.md"
+Issues = "https://github.com/Backtest360/backtest360-client/issues"
+Contact = "mailto:hello@backtest360.com"
 
 [project.optional-dependencies]
 dev = [

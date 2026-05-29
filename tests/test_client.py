@@ -16,8 +16,9 @@ from backtest360.client import (
     _build_backtest_body,
     _build_execution_wire,
     _ohlcv_to_wire,
+    _signals_to_wire,
 )
-from backtest360.strategy import Costs, Execution, Risk, Sizing, Strategy
+from backtest360.strategy import Costs, Execution, MarketHours, Risk, Settings, Sizing, Strategy
 
 
 # ---------------------------------------------------------------------------
@@ -516,28 +517,30 @@ def test_ohlcv_to_wire_lengths_match():
 
 
 def test_build_execution_wire_empty():
-    w = _build_execution_wire(None, None, None, None)
+    w = _build_execution_wire(None, None, None, None, None, None)
     assert w == {}
 
 
 def test_build_execution_wire_execution_only():
-    w = _build_execution_wire(Execution(signal_frequency="hourly"), None, None, None)
+    w = _build_execution_wire(Execution(signal_frequency="hourly"), None, None, None, None, None)
     assert w["signal_frequency"] == "hourly"
     assert "slippage_bps" not in w
 
 
 def test_build_execution_wire_costs_only():
-    w = _build_execution_wire(None, Costs(slippage_bps=5.0), None, None)
+    w = _build_execution_wire(None, Costs(slippage_bps=5.0), None, None, None, None)
     assert w["slippage_bps"] == 5.0
     assert "signal_frequency" not in w
 
 
-def test_build_execution_wire_all():
+def test_build_execution_wire_all_six():
     w = _build_execution_wire(
         Execution(signal_frequency="daily"),
         Costs(slippage_bps=2.5, fee_pct=0.001),
         Risk(stop="trailing_atr", value=2.5, atr_period=14),
         Sizing(weight=0.5, vol_target=0.15, leverage_limit=2.0),
+        MarketHours(open_hour=9.5, close_hour=16.0),
+        Settings(risk_free_rate=0.04, on_bad_data="zero"),
     )
     assert w["signal_frequency"] == "daily"
     assert w["slippage_bps"] == 2.5
@@ -548,6 +551,23 @@ def test_build_execution_wire_all():
     assert w["position_weight"] == 0.5
     assert w["vol_target"] == 0.15
     assert w["leverage_limit"] == 2.0
+    assert w["open_hour"] == 9.5
+    assert w["close_hour"] == 16.0
+    assert w["risk_free_rate"] == 0.04
+    assert w["on_bad_data"] == "zero"
+
+
+def test_build_execution_wire_market_hours_only():
+    w = _build_execution_wire(None, None, None, None, MarketHours(open_hour=9.5, close_hour=16.0), None)
+    assert w["open_hour"] == 9.5
+    assert w["close_hour"] == 16.0
+    assert "signal_frequency" not in w
+
+
+def test_build_execution_wire_settings_only():
+    w = _build_execution_wire(None, None, None, None, None, Settings(risk_free_rate=0.05))
+    assert w["risk_free_rate"] == 0.05
+    assert "signal_frequency" not in w
 
 
 # ---------------------------------------------------------------------------
@@ -818,7 +838,7 @@ def test_request_root_path_raises_path_forbidden():
 # ---------------------------------------------------------------------------
 
 _PUBLIC_METHODS = {
-    "backtest", "backtest_raw", "latest_signal",
+    "backtest", "backtest_signals", "backtest_raw", "latest_signal",
     "validate_strategy", "list_strategies",
     "list_indicators", "version",
 }
@@ -827,3 +847,151 @@ _PUBLIC_METHODS = {
 def test_client_public_surface_locked():
     actual = {n for n in dir(Client) if not n.startswith("_")}
     assert actual == _PUBLIC_METHODS
+
+
+# ---------------------------------------------------------------------------
+# _signals_to_wire
+# ---------------------------------------------------------------------------
+
+
+def test_signals_to_wire_shape():
+    import pandas as pd
+    idx = pd.date_range("2020-01-01", periods=4, freq="D")
+    sig = pd.Series([0, 1, 1, -1], index=idx)
+    w = _signals_to_wire(sig, name=None)
+    assert "dates" in w
+    assert "values" in w
+    assert w["values"] == [0, 1, 1, -1]
+    assert all(isinstance(d, str) for d in w["dates"])
+    assert len(w["dates"]) == 4
+    assert "strategy_name" not in w
+
+
+def test_signals_to_wire_with_name():
+    import pandas as pd
+    idx = pd.date_range("2020-01-01", periods=2, freq="D")
+    sig = pd.Series([0, 1], index=idx)
+    w = _signals_to_wire(sig, name="my_model")
+    assert w["strategy_name"] == "my_model"
+
+
+def test_signals_to_wire_values_are_int():
+    import pandas as pd
+    idx = pd.date_range("2020-01-01", periods=3, freq="D")
+    sig = pd.Series([0.0, 1.0, -1.0], index=idx)
+    w = _signals_to_wire(sig, name=None)
+    assert all(isinstance(v, int) for v in w["values"])
+
+
+# ---------------------------------------------------------------------------
+# Client.backtest_signals
+# ---------------------------------------------------------------------------
+
+
+def _make_signals(n=3):
+    import pandas as pd
+    idx = pd.date_range("2020-01-01", periods=n, freq="D")
+    return pd.Series([0] + [1] * (n - 1), index=idx)
+
+
+def test_backtest_signals_posts_to_api_backtest():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest_signals(_make_signals(), _make_df())
+    url = mock_http.post.call_args[0][0]
+    assert url.endswith("/api/backtest")
+
+
+def test_backtest_signals_body_has_signals_not_strategy():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest_signals(_make_signals(), _make_df())
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "signals" in body
+    assert "strategy" not in body
+    assert "data_source" in body
+    assert "values" in body["signals"]
+    assert "dates" in body["signals"]
+
+
+def test_backtest_signals_with_name():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest_signals(_make_signals(), _make_df(), name="ml_model")
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert body["signals"]["strategy_name"] == "ml_model"
+
+
+def test_backtest_signals_execution_wire_merged():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest_signals(
+            _make_signals(), _make_df(),
+            costs=Costs(slippage_bps=3.0),
+            settings=Settings(risk_free_rate=0.04),
+        )
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert body["execution"]["slippage_bps"] == 3.0
+    assert body["execution"]["risk_free_rate"] == 0.04
+
+
+def test_backtest_signals_with_benchmark():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest_signals(_make_signals(), _make_df(), benchmark=_make_df())
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "benchmark" in body
+
+
+def test_backtest_signals_returns_result():
+    c = Client(api_key="key")
+    mock_ctx, _, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        result = c.backtest_signals(_make_signals(), _make_df())
+    assert isinstance(result, Result)
+    assert result.stats["Sharpe"] == 1.42
+
+
+def test_backtest_signals_no_execution_omits_field():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest_signals(_make_signals(), _make_df())
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert "execution" not in body
+
+
+# ---------------------------------------------------------------------------
+# Client.backtest — new kwargs wired through
+# ---------------------------------------------------------------------------
+
+
+def test_backtest_with_market_hours():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest(
+            Strategy.rsi_threshold_long(), _make_df(),
+            market_hours=MarketHours(open_hour=9.5, close_hour=16.0),
+        )
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert body["execution"]["open_hour"] == 9.5
+    assert body["execution"]["close_hour"] == 16.0
+
+
+def test_backtest_with_settings():
+    c = Client(api_key="key")
+    mock_ctx, mock_http, _ = _mock_http_context("POST", 200, _backtest_response())
+    with patch("backtest360.client.httpx.Client", return_value=mock_ctx):
+        c.backtest(
+            Strategy.rsi_threshold_long(), _make_df(),
+            settings=Settings(risk_free_rate=0.04, on_bad_data="zero"),
+        )
+    body = json.loads(mock_http.post.call_args[1]["content"])
+    assert body["execution"]["risk_free_rate"] == 0.04
+    assert body["execution"]["on_bad_data"] == "zero"

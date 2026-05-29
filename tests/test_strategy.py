@@ -1,10 +1,10 @@
-"""Tests for strategy.py — Execution, Costs, Risk, Sizing, Strategy."""
+"""Tests for strategy.py — Execution, Costs, Risk, Sizing, MarketHours, Settings, Strategy."""
 
 from __future__ import annotations
 
 import pytest
 
-from backtest360.strategy import Costs, Execution, Risk, Sizing, Strategy
+from backtest360.strategy import Costs, Execution, MarketHours, Risk, Settings, Sizing, Strategy
 
 
 # ---------------------------------------------------------------------------
@@ -19,7 +19,8 @@ def test_execution_defaults():
     assert e.signal_frequency == "daily"
     assert e.entry_window == 0
     assert e.exit_window == 0
-    assert e.fill == "exact"
+    assert e.entry_fill == "exact"
+    assert e.exit_fill == "exact"
 
 
 def test_execution_to_wire_defaults():
@@ -36,7 +37,7 @@ def test_execution_to_wire_defaults():
 def test_execution_to_wire_custom():
     w = Execution(
         entry="close", exit="vwap", signal_frequency="hourly",
-        entry_window=1, exit_window=2, fill="worst",
+        entry_window=1, exit_window=2, entry_fill="worst", exit_fill="best",
     ).to_wire()
     assert w["entry_anchor"] == "close"
     assert w["exit_anchor"] == "vwap"
@@ -44,7 +45,13 @@ def test_execution_to_wire_custom():
     assert w["entry_window"] == 1
     assert w["exit_window"] == 2
     assert w["entry_fill"] == "worst"
-    assert w["exit_fill"] == "worst"
+    assert w["exit_fill"] == "best"
+
+
+def test_execution_entry_exit_fill_can_differ():
+    w = Execution(entry_fill="worst", exit_fill="exact").to_wire()
+    assert w["entry_fill"] == "worst"
+    assert w["exit_fill"] == "exact"
 
 
 # ---------------------------------------------------------------------------
@@ -86,7 +93,7 @@ def test_risk_defaults():
     assert r.stop is None
     assert r.value is None
     assert r.atr_period is None
-    assert r.reentry is True
+    assert r.reentry == "immediate"
     assert r.cooldown_bars == 0
     assert r.max_drawdown is None
 
@@ -97,29 +104,51 @@ def test_risk_to_wire_no_stop():
     assert "stop_value" not in w
     assert "stop_atr_period" not in w
     assert "max_drawdown_limit" not in w
-    assert w["stop_reentry"] is True
+    assert w["stop_reentry"] == "immediate"
     assert w["stop_cooldown_bars"] == 0
 
 
 def test_risk_to_wire_trailing_atr():
-    w = Risk(stop="trailing_atr", value=2.5, atr_period=14, reentry=False, cooldown_bars=3).to_wire()
+    w = Risk(stop="trailing_atr", value=2.5, atr_period=14, reentry="next_signal", cooldown_bars=3).to_wire()
     assert w["stop_type"] == "trailing_atr"
     assert w["stop_value"] == 2.5
     assert w["stop_atr_period"] == 14
-    assert w["stop_reentry"] is False
+    assert w["stop_reentry"] == "next_signal"
     assert w["stop_cooldown_bars"] == 3
 
 
-def test_risk_to_wire_fixed_pct():
-    w = Risk(stop="fixed_pct", value=0.05).to_wire()
-    assert w["stop_type"] == "fixed_pct"
+def test_risk_to_wire_fixed():
+    w = Risk(stop="fixed", value=0.05).to_wire()
+    assert w["stop_type"] == "fixed"
     assert w["stop_value"] == 0.05
     assert "stop_atr_period" not in w
+
+
+def test_risk_to_wire_trailing():
+    w = Risk(stop="trailing", value=0.10).to_wire()
+    assert w["stop_type"] == "trailing"
+
+
+def test_risk_to_wire_atr():
+    w = Risk(stop="atr", value=2.0, atr_period=14).to_wire()
+    assert w["stop_type"] == "atr"
+    assert w["stop_atr_period"] == 14
+
+
+def test_risk_to_wire_cooldown_reentry():
+    w = Risk(stop="fixed", value=0.05, reentry="cooldown", cooldown_bars=5).to_wire()
+    assert w["stop_reentry"] == "cooldown"
+    assert w["stop_cooldown_bars"] == 5
 
 
 def test_risk_to_wire_max_drawdown():
     w = Risk(max_drawdown=0.25).to_wire()
     assert w["max_drawdown_limit"] == 0.25
+
+
+def test_risk_reentry_is_string():
+    r = Risk()
+    assert isinstance(r.reentry, str)
 
 
 # ---------------------------------------------------------------------------
@@ -132,15 +161,15 @@ def test_sizing_defaults():
     assert s.weight == 1.0
     assert s.vol_target is None
     assert s.vol_target_lookback == 20
-    assert s.leverage_limit == 1.0
+    assert s.leverage_limit is None
 
 
 def test_sizing_to_wire_defaults():
     w = Sizing().to_wire()
     assert w["position_weight"] == 1.0
-    assert w["leverage_limit"] == 1.0
     assert w["vol_target_lookback"] == 20
     assert "vol_target" not in w
+    assert "leverage_limit" not in w
 
 
 def test_sizing_to_wire_with_vol_target():
@@ -149,6 +178,85 @@ def test_sizing_to_wire_with_vol_target():
     assert w["vol_target"] == 0.15
     assert w["vol_target_lookback"] == 30
     assert w["leverage_limit"] == 2.0
+
+
+def test_sizing_leverage_limit_none_omitted():
+    w = Sizing(leverage_limit=None).to_wire()
+    assert "leverage_limit" not in w
+
+
+def test_sizing_leverage_limit_set_emitted():
+    w = Sizing(leverage_limit=1.5).to_wire()
+    assert w["leverage_limit"] == 1.5
+
+
+# ---------------------------------------------------------------------------
+# MarketHours
+# ---------------------------------------------------------------------------
+
+
+def test_market_hours_defaults():
+    m = MarketHours()
+    assert m.open_hour is None
+    assert m.close_hour is None
+    assert m.strict_anchors is False
+
+
+def test_market_hours_to_wire_defaults():
+    w = MarketHours().to_wire()
+    assert w["strict_anchors"] is False
+    assert "open_hour" not in w
+    assert "close_hour" not in w
+
+
+def test_market_hours_to_wire_with_hours():
+    w = MarketHours(open_hour=9.5, close_hour=16.0).to_wire()
+    assert w["open_hour"] == 9.5
+    assert w["close_hour"] == 16.0
+    assert w["strict_anchors"] is False
+
+
+def test_market_hours_to_wire_strict():
+    w = MarketHours(open_hour=9.5, close_hour=16.0, strict_anchors=True).to_wire()
+    assert w["strict_anchors"] is True
+
+
+def test_market_hours_open_hour_only_omitted():
+    w = MarketHours(close_hour=16.0).to_wire()
+    assert "open_hour" not in w
+    assert w["close_hour"] == 16.0
+
+
+# ---------------------------------------------------------------------------
+# Settings
+# ---------------------------------------------------------------------------
+
+
+def test_settings_defaults():
+    s = Settings()
+    assert s.risk_free_rate == 0.0
+    assert s.random_seed == 42
+    assert s.on_bad_data == "raise"
+
+
+def test_settings_to_wire_defaults():
+    w = Settings().to_wire()
+    assert w["risk_free_rate"] == 0.0
+    assert w["random_seed"] == 42
+    assert w["on_bad_data"] == "raise"
+
+
+def test_settings_to_wire_custom():
+    w = Settings(risk_free_rate=0.04, random_seed=99, on_bad_data="zero").to_wire()
+    assert w["risk_free_rate"] == 0.04
+    assert w["random_seed"] == 99
+    assert w["on_bad_data"] == "zero"
+
+
+def test_settings_rfr_only():
+    w = Settings(risk_free_rate=0.05).to_wire()
+    assert w["risk_free_rate"] == 0.05
+    assert w["on_bad_data"] == "raise"
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +387,6 @@ def test_ma_crossover_shape():
     assert w["condition_tree"]["long_exit"]["expr"] == "x_below"
     refs = {i["ref"] for i in w["indicators"]}
     assert refs == {"sma_10", "sma_50", "x_above", "x_below"}
-    # cross_above should have upstream references
     x_above = next(i for i in w["indicators"] if i["ref"] == "x_above")
     assert "sma_10" in x_above["upstream"]
     assert "sma_50" in x_above["upstream"]
@@ -309,7 +416,9 @@ def test_templates_return_new_instances():
 def test_all_importable_from_package():
     from backtest360 import Costs as C  # noqa: F401
     from backtest360 import Execution as E  # noqa: F401
+    from backtest360 import MarketHours as MH  # noqa: F401
     from backtest360 import Risk as R  # noqa: F401
+    from backtest360 import Settings as Se  # noqa: F401
     from backtest360 import Sizing as S  # noqa: F401
     from backtest360 import Strategy as St  # noqa: F401
 
@@ -317,4 +426,6 @@ def test_all_importable_from_package():
     assert C is Costs
     assert R is Risk
     assert S is Sizing
+    assert MH is MarketHours
+    assert Se is Settings
     assert St is Strategy

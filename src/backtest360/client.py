@@ -11,7 +11,15 @@ import httpx
 import pandas as pd
 
 if TYPE_CHECKING:
-    from backtest360.strategy import Costs, Execution, Risk, Sizing, Strategy
+    from backtest360.strategy import (
+        Costs,
+        Execution,
+        MarketHours,
+        Risk,
+        Settings,
+        Sizing,
+        Strategy,
+    )
 
 _DEFAULT_BASE_URL = "https://api.backtest360.com"
 _TIMEOUT_SECONDS = 300.0
@@ -340,6 +348,8 @@ class Client:
         costs: Costs | None = None,
         risk: Risk | None = None,
         sizing: Sizing | None = None,
+        market_hours: MarketHours | None = None,
+        settings: Settings | None = None,
     ) -> dict:
         """Return the latest signal for a strategy on the given data.
 
@@ -354,6 +364,8 @@ class Client:
             costs: Cost configuration (optional).
             risk: Risk / stop configuration (optional).
             sizing: Position sizing configuration (optional).
+            market_hours: Daily anchor-hour configuration (optional).
+            settings: Engine-level run settings (optional).
 
         Returns:
             Dict with ``signal`` (int), ``long_entry_fired`` (bool), and
@@ -366,7 +378,17 @@ class Client:
             >>> sig = client.latest_signal(Strategy.rsi_threshold_long(), df)
             >>> print(sig["signal"])  # -1 / 0 / 1
         """
-        body = _build_backtest_body(strategy, ohlcv, None, execution, costs, risk, sizing)
+        body = _build_backtest_body(
+            strategy=strategy,
+            ohlcv=ohlcv,
+            benchmark=None,
+            execution=execution,
+            costs=costs,
+            risk=risk,
+            sizing=sizing,
+            market_hours=market_hours,
+            settings=settings,
+        )
         return self._request("POST", "/api/latest-signal", body)
 
     def backtest_raw(self, payload: dict) -> dict:
@@ -404,6 +426,8 @@ class Client:
         costs: Costs | None = None,
         risk: Risk | None = None,
         sizing: Sizing | None = None,
+        market_hours: MarketHours | None = None,
+        settings: Settings | None = None,
     ) -> Result:
         """Run a historical backtest and return a :class:`Result`.
 
@@ -421,6 +445,9 @@ class Client:
             costs: Transaction costs — ``slippage_bps``, ``fee_pct``, etc.
             risk: Stop-loss / drawdown protection config.
             sizing: Position sizing config.
+            market_hours: Daily anchor-hour config for sub-daily execution.
+            settings: Engine-level run settings — RFR, RNG seed, bad-data
+                policy.
 
         Returns:
             A :class:`Result` wrapping the engine response.
@@ -429,16 +456,89 @@ class Client:
             Backtest360Error: On any non-2xx response.
 
         Example:
-            >>> from backtest360 import Client, Strategy, Execution, Costs
+            >>> from backtest360 import Client, Strategy, Execution, Costs, Settings
             >>> result = Client(api_key="...").backtest(
             ...     Strategy.rsi_threshold_long(), df,
             ...     execution=Execution(signal_frequency="daily"),
             ...     costs=Costs(slippage_bps=2.5, fee_pct=0.001),
+            ...     settings=Settings(risk_free_rate=0.04),
             ... )
             >>> print(result.stats["Sharpe"])
             >>> result.equity.plot()
         """
-        body = _build_backtest_body(strategy, ohlcv, benchmark, execution, costs, risk, sizing)
+        body = _build_backtest_body(
+            strategy=strategy,
+            ohlcv=ohlcv,
+            benchmark=benchmark,
+            execution=execution,
+            costs=costs,
+            risk=risk,
+            sizing=sizing,
+            market_hours=market_hours,
+            settings=settings,
+        )
+        resp = self._request("POST", "/api/backtest", body)
+        result_data = resp.get("result", resp)
+        return Result(result_data)
+
+    def backtest_signals(
+        self,
+        signals: pd.Series,
+        ohlcv: pd.DataFrame,
+        *,
+        name: str | None = None,
+        benchmark: pd.DataFrame | None = None,
+        execution: Execution | None = None,
+        costs: Costs | None = None,
+        risk: Risk | None = None,
+        sizing: Sizing | None = None,
+        market_hours: MarketHours | None = None,
+        settings: Settings | None = None,
+    ) -> Result:
+        """Run a backtest using a pre-computed signal series.
+
+        Use this when your signal logic lives outside the engine (e.g. a
+        machine-learning model, a custom indicator). Pass a ``pd.Series`` of
+        ``{-1, 0, 1}`` indexed by datetime; the engine skips signal generation
+        and runs execution, costing, and statistics directly on your series.
+
+        Args:
+            signals: Integer series indexed by datetime with values in
+                ``{-1, 0, 1}``. ``1`` = long, ``-1`` = short, ``0`` = flat.
+                Must cover the same date range as ``ohlcv``.
+            ohlcv: DataFrame indexed by datetime with lowercase columns
+                ``open``, ``high``, ``low``, ``close`` (and optionally
+                ``volume``).
+            name: Optional label for the strategy (used in engine output).
+            benchmark: Optional benchmark DataFrame (same shape as ``ohlcv``).
+            execution: Execution timing config.
+            costs: Transaction costs.
+            risk: Stop-loss / drawdown protection config.
+            sizing: Position sizing config.
+            market_hours: Daily anchor-hour config for sub-daily execution.
+            settings: Engine-level run settings.
+
+        Returns:
+            A :class:`Result` wrapping the engine response.
+
+        Raises:
+            Backtest360Error: On any non-2xx response.
+
+        Example:
+            >>> import pandas as pd
+            >>> signals = pd.Series([0, 1, 1, 0, -1, 0], index=df.index)
+            >>> result = client.backtest_signals(signals, df)
+            >>> print(result.stats["Sharpe"])
+        """
+        exec_wire = _build_execution_wire(execution, costs, risk, sizing, market_hours, settings)
+        body: dict = {
+            "data_source": {"ohlcv": _ohlcv_to_wire(ohlcv)},
+            "signals":     _signals_to_wire(signals, name),
+        }
+        if exec_wire:
+            body["execution"] = exec_wire
+        if benchmark is not None:
+            body["benchmark"] = {"ohlcv": _ohlcv_to_wire(benchmark)}
         resp = self._request("POST", "/api/backtest", body)
         result_data = resp.get("result", resp)
         return Result(result_data)
@@ -463,13 +563,26 @@ def _ohlcv_to_wire(df: pd.DataFrame) -> dict:
     return result
 
 
+def _signals_to_wire(signals: pd.Series, name: str | None) -> dict:
+    """Serialise a signal series to the engine's SignalsInput wire shape."""
+    d: dict = {
+        "dates":  [str(ts) for ts in signals.index],
+        "values": [int(v) for v in signals.tolist()],
+    }
+    if name is not None:
+        d["strategy_name"] = name
+    return d
+
+
 def _build_execution_wire(
     execution: Execution | None,
     costs: Costs | None,
     risk: Risk | None,
     sizing: Sizing | None,
+    market_hours: MarketHours | None,
+    settings: Settings | None,
 ) -> dict:
-    """Merge the grouped-knob objects into the engine's flat execution dict."""
+    """Merge all grouped-knob objects into the engine's flat execution dict."""
     d: dict = {}
     if execution is not None:
         d.update(execution.to_wire())
@@ -479,6 +592,10 @@ def _build_execution_wire(
         d.update(risk.to_wire())
     if sizing is not None:
         d.update(sizing.to_wire())
+    if market_hours is not None:
+        d.update(market_hours.to_wire())
+    if settings is not None:
+        d.update(settings.to_wire())
     return d
 
 
@@ -490,12 +607,14 @@ def _build_backtest_body(
     costs: Costs | None,
     risk: Risk | None,
     sizing: Sizing | None,
+    market_hours: MarketHours | None,
+    settings: Settings | None,
 ) -> dict:
     body: dict = {
         "data_source": {"ohlcv": _ohlcv_to_wire(ohlcv)},
-        "strategy": strategy.to_wire(),
+        "strategy":    strategy.to_wire(),
     }
-    exec_wire = _build_execution_wire(execution, costs, risk, sizing)
+    exec_wire = _build_execution_wire(execution, costs, risk, sizing, market_hours, settings)
     if exec_wire:
         body["execution"] = exec_wire
     if benchmark is not None:

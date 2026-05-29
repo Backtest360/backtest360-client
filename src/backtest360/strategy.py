@@ -25,14 +25,16 @@ class Execution:
         entry_window: Number of bars the engine attempts to fill after the
             entry anchor. Default ``0`` (fill on the anchor bar only).
         exit_window: Same for exits.
-        fill: Fill price model. One of ``"exact"``, ``"worst"``, ``"best"``.
-            Default ``"exact"``.
+        entry_fill: Fill price model for entries. One of ``"exact"``,
+            ``"worst"``, ``"best"``, ``"random"``. Default ``"exact"``.
+        exit_fill: Fill price model for exits. Default ``"exact"``.
 
     See also:
         https://api.backtest360.com/docs for the full execution reference.
 
     Example:
         >>> Execution(entry="open", exit="close", signal_frequency="daily")
+        >>> Execution(entry_fill="worst", exit_fill="best")
     """
 
     entry: str = "open"
@@ -40,7 +42,8 @@ class Execution:
     signal_frequency: str = "daily"
     entry_window: int = 0
     exit_window: int = 0
-    fill: str = "exact"
+    entry_fill: str = "exact"
+    exit_fill: str = "exact"
 
     def to_wire(self) -> dict:
         """Serialise to the engine's flat execution dict."""
@@ -48,10 +51,10 @@ class Execution:
             "signal_frequency": self.signal_frequency,
             "entry_anchor":     self.entry,
             "entry_window":     self.entry_window,
-            "entry_fill":       self.fill,
+            "entry_fill":       self.entry_fill,
             "exit_anchor":      self.exit,
             "exit_window":      self.exit_window,
-            "exit_fill":        self.fill,
+            "exit_fill":        self.exit_fill,
         }
 
 
@@ -93,35 +96,41 @@ class Risk:
     """Risk management — stops and drawdown protection.
 
     Args:
-        stop: Stop type. One of ``"fixed_pct"``, ``"trailing_pct"``,
-            ``"fixed_atr"``, ``"trailing_atr"``. ``None`` disables stops.
-            See ``GET /api/stop-types`` for the full list.
+        stop: Stop type. One of ``"fixed"`` (% from entry), ``"trailing"``
+            (% trailing from peak), ``"atr"`` (ATR multiple from entry),
+            ``"trailing_atr"`` (ATR trailing from peak). ``None`` disables
+            stops. See ``GET /api/stop-types`` for the full list.
         value: Stop distance — percent (e.g. ``0.05`` for 5%) or ATR multiple
             (e.g. ``2.5`` for 2.5× ATR), depending on ``stop``.
         atr_period: Lookback bars for ATR-based stops. Default ``None``.
-        reentry: Re-enter after a stop-out. Default ``True``.
-        cooldown_bars: Bars to wait before re-entering after a stop.
-            Default ``0``.
+        reentry: Re-entry behaviour after a stop exit. One of
+            ``"immediate"`` (re-enter next bar if signal is non-zero),
+            ``"next_signal"`` (wait for signal to go flat first),
+            ``"cooldown"`` (wait ``cooldown_bars`` bars). Default
+            ``"immediate"``.
+        cooldown_bars: Bars to suppress re-entry after a stop exit. Only
+            used when ``reentry="cooldown"``. Default ``0``.
         max_drawdown: Circuit-breaker drawdown limit (e.g. ``0.25`` = 25%).
             Flattens the position when the running drawdown exceeds this value.
             ``None`` disables it.
 
     Example:
         >>> Risk(stop="trailing_atr", value=2.5, atr_period=14)
-        >>> Risk(stop="fixed_pct", value=0.05, max_drawdown=0.20)
+        >>> Risk(stop="fixed", value=0.05, max_drawdown=0.20)
+        >>> Risk(stop="atr", value=2.0, reentry="cooldown", cooldown_bars=5)
     """
 
     stop: str | None = None
     value: float | None = None
     atr_period: int | None = None
-    reentry: bool = True
+    reentry: str = "immediate"
     cooldown_bars: int = 0
     max_drawdown: float | None = None
 
     def to_wire(self) -> dict:
         """Serialise to the engine's risk dict."""
         d: dict = {
-            "stop_reentry":      self.reentry,
+            "stop_reentry":       self.reentry,
             "stop_cooldown_bars": self.cooldown_bars,
         }
         if self.stop is not None:
@@ -146,7 +155,8 @@ class Sizing:
             ``None`` disables vol targeting. Example: ``0.15`` for 15%.
         vol_target_lookback: Lookback bars for realised vol estimate.
             Default ``20``.
-        leverage_limit: Maximum leverage cap. Default ``1.0``.
+        leverage_limit: Maximum leverage cap. ``None`` applies no cap.
+            Default ``None``.
 
     Example:
         >>> Sizing(weight=0.5)
@@ -156,18 +166,86 @@ class Sizing:
     weight: float = 1.0
     vol_target: float | None = None
     vol_target_lookback: int = 20
-    leverage_limit: float = 1.0
+    leverage_limit: float | None = None
 
     def to_wire(self) -> dict:
         """Serialise to the engine's sizing dict."""
         d: dict = {
             "position_weight":     self.weight,
-            "leverage_limit":      self.leverage_limit,
             "vol_target_lookback": self.vol_target_lookback,
         }
         if self.vol_target is not None:
             d["vol_target"] = self.vol_target
+        if self.leverage_limit is not None:
+            d["leverage_limit"] = self.leverage_limit
         return d
+
+
+@dataclass
+class MarketHours:
+    """Daily anchor hours for sub-daily execution.
+
+    Only meaningful when ``signal_frequency="daily"`` and the execution bars
+    are sub-daily (e.g. hourly). Selects which intraday bar within each daily
+    group counts as the open and close anchor.
+
+    Args:
+        open_hour: Hour-of-day for the daily open anchor (0–24, e.g. ``9.5``
+            for 9:30 am). ``None`` = use the first bar of each daily group.
+        close_hour: Hour-of-day for the daily close anchor (0–24, e.g.
+            ``16.0`` for 4:00 pm). ``None`` = use the last bar of each group.
+        strict_anchors: If ``True``, raise when the configured hour is absent
+            from a sub-bar group (DST shifts, half-days). If ``False``, fall
+            back silently to the nearest bar. Default ``False``.
+
+    Example:
+        >>> MarketHours(open_hour=9.5, close_hour=16.0)
+        >>> MarketHours(open_hour=9.5, close_hour=16.0, strict_anchors=True)
+    """
+
+    open_hour: float | None = None
+    close_hour: float | None = None
+    strict_anchors: bool = False
+
+    def to_wire(self) -> dict:
+        """Serialise to the engine's market-hours dict."""
+        d: dict = {"strict_anchors": self.strict_anchors}
+        if self.open_hour is not None:
+            d["open_hour"] = self.open_hour
+        if self.close_hour is not None:
+            d["close_hour"] = self.close_hour
+        return d
+
+
+@dataclass
+class Settings:
+    """Engine-level run settings — statistics inputs, RNG, bad-data policy.
+
+    Args:
+        risk_free_rate: Annualised risk-free rate used when computing Sharpe
+            and Sortino ratios. Default ``0.0``.
+        random_seed: RNG seed. Only used when ``Execution.entry_fill`` or
+            ``exit_fill`` is ``"random"``. Default ``42``.
+        on_bad_data: Policy for bars with NaN, zero, or negative prices.
+            ``"raise"`` (default) aborts the backtest; ``"zero"`` zeros the
+            bar's return and continues.
+
+    Example:
+        >>> Settings(risk_free_rate=0.04)
+        >>> Settings(risk_free_rate=0.05, on_bad_data="zero")
+    """
+
+    risk_free_rate: float = 0.0
+    random_seed: int = 42
+    on_bad_data: str = "raise"
+
+    def to_wire(self) -> dict:
+        """Serialise to the engine's settings dict."""
+        return {
+            "risk_free_rate": self.risk_free_rate,
+            "random_seed":    self.random_seed,
+            "on_bad_data":    self.on_bad_data,
+        }
 
 
 # ---------------------------------------------------------------------------

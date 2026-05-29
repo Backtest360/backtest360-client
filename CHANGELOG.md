@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.0] — 2026-05-29
+
+### Added
+
+- `MarketHours` dataclass — daily anchor-hour config for sub-daily execution
+  (`open_hour`, `close_hour`, `strict_anchors`). Optional kwarg on `backtest()`
+  and `latest_signal()`.
+- `Settings` dataclass — engine-level run settings (`risk_free_rate`,
+  `random_seed`, `on_bad_data`). Optional kwarg on `backtest()` and
+  `latest_signal()`.
+- `Client.backtest_signals(signals, ohlcv, ...)` — run a backtest from a
+  pre-computed `pd.Series` of `{-1, 0, 1}` signals. Accepts the same
+  execution-knob kwargs as `backtest()`.
+
+### Breaking
+
+- `Execution.fill` renamed to `Execution.entry_fill` and `Execution.exit_fill`
+  (two independent fields). The engine always accepted them independently; the
+  single `fill` field hid that degree of freedom. Update any code passing
+  `Execution(fill=...)` to `Execution(entry_fill=..., exit_fill=...)`.
+- `Risk.stop` vocab now matches the engine exactly: `"fixed"`, `"trailing"`,
+  `"atr"`, `"trailing_atr"`. Previous values `"fixed_pct"`, `"trailing_pct"`,
+  `"fixed_atr"` were never accepted by the engine and have been removed.
+- `Risk.reentry` changed from `bool` to `str`. Valid values:
+  `"immediate"` (default), `"next_signal"`, `"cooldown"`. The previous
+  `bool` was never valid on the wire and would 422 whenever a stop was set.
+- `Sizing.leverage_limit` default changed from `1.0` to `None` (no cap). The
+  old default silently capped positions to ≤1.0× leverage.
+
+---
+
 ## [0.1.1] — 2026-05-28
 
 ### Fixed

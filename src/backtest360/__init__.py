@@ -3,7 +3,7 @@
 from importlib.metadata import PackageNotFoundError, version
 
 from backtest360.client import Backtest360Error, Client, Result
-from backtest360.strategy import Costs, Execution, Risk, Sizing, Strategy
+from backtest360.strategy import Costs, Execution, MarketHours, Risk, Settings, Sizing, Strategy
 
 try:
     __version__ = version("backtest360-client")
@@ -17,6 +17,8 @@ __all__ = [
     "Costs",
     "Risk",
     "Sizing",
+    "MarketHours",
+    "Settings",
     "Result",
     "Backtest360Error",
     "__version__",
