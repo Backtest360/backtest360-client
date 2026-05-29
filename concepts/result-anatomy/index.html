@@ -1356,10 +1356,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#resultequity-resultreturns-resultsignals" class="md-nav__link">
+  <a href="#resultstrategy_equity-resultbenchmark_equity-resultreturns-resultsignals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        result.equity / result.returns / result.signals
+        result.strategy_equity / result.benchmark_equity / result.returns / result.signals
       
     </span>
   </a>
@@ -1470,10 +1470,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#resultequity-resultreturns-resultsignals" class="md-nav__link">
+  <a href="#resultstrategy_equity-resultbenchmark_equity-resultreturns-resultsignals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        result.equity / result.returns / result.signals
+        result.strategy_equity / result.benchmark_equity / result.returns / result.signals
       
     </span>
   </a>
@@ -1571,12 +1571,14 @@ and derived lazily from the raw engine response.</p>
 <li><code>exit_reason</code> — <code>"exit_signal"</code>, <code>"stop_loss"</code>, <code>"max_drawdown"</code>, etc.</li>
 <li><code>cumulative_pnl</code> — running sum of <code>return_net</code> across all trades to this point</li>
 </ul>
-<h2 id="resultequity-resultreturns-resultsignals"><code>result.equity</code> / <code>result.returns</code> / <code>result.signals</code><a class="headerlink" href="#resultequity-resultreturns-resultsignals" title="Permanent link">&para;</a></h2>
-<p>All three are <code>pd.Series</code> indexed by <code>datetime64</code>:</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">result</span><span class="o">.</span><span class="n">equity</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Equity curve&quot;</span><span class="p">)</span>          <span class="c1"># starts at 1.0</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">result</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cumulative&quot;</span><span class="p">)</span>  <span class="c1"># log-returns</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">result</span><span class="o">.</span><span class="n">signals</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>                     <span class="c1"># {-1, 0, 1} distribution</span>
+<h2 id="resultstrategy_equity-resultbenchmark_equity-resultreturns-resultsignals"><code>result.strategy_equity</code> / <code>result.benchmark_equity</code> / <code>result.returns</code> / <code>result.signals</code><a class="headerlink" href="#resultstrategy_equity-resultbenchmark_equity-resultreturns-resultsignals" title="Permanent link">&para;</a></h2>
+<p>All are <code>pd.Series</code> indexed by <code>datetime64</code>:</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">ax</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">strategy_equity</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Equity curve&quot;</span><span class="p">)</span>   <span class="c1"># starts at 1.0</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">result</span><span class="o">.</span><span class="n">benchmark_equity</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">linestyle</span><span class="o">=</span><span class="s2">&quot;--&quot;</span><span class="p">)</span>       <span class="c1"># present when benchmark was supplied</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">result</span><span class="o">.</span><span class="n">returns</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Cumulative&quot;</span><span class="p">)</span>          <span class="c1"># log-returns</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="n">result</span><span class="o">.</span><span class="n">signals</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>                             <span class="c1"># {-1, 0, 1} distribution</span>
 </code></pre></div>
+<p><code>benchmark_equity</code> is an empty Series when no <code>benchmark</code> was passed to <code>backtest()</code> — safe to plot unconditionally.</p>
 <h2 id="resultraw"><code>result.raw</code><a class="headerlink" href="#resultraw" title="Permanent link">&para;</a></h2>
 <p>The full <code>dict</code> from the engine — everything not exposed as a property:</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">result</span><span class="o">.</span><span class="n">raw</span><span class="p">[</span><span class="s2">&quot;monthly_returns&quot;</span><span class="p">]</span>    <span class="c1"># list of {period, return} dicts</span>

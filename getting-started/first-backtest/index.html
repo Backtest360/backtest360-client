@@ -1389,7 +1389,7 @@
 <a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="n">result</span> <span class="o">=</span> <span class="n">Client</span><span class="p">(</span><span class="n">api_key</span><span class="o">=</span><span class="s2">&quot;b360_live_...&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">backtest</span><span class="p">(</span><span class="n">Strategy</span><span class="o">.</span><span class="n">rsi_threshold_long</span><span class="p">(),</span> <span class="n">df</span><span class="p">)</span>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;Sharpe&quot;</span><span class="p">])</span>
-<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">result</span><span class="o">.</span><span class="n">equity</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Equity curve&quot;</span><span class="p">)</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="n">result</span><span class="o">.</span><span class="n">strategy_equity</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Equity curve&quot;</span><span class="p">)</span>
 </code></pre></div>
 <p><strong>Line by line:</strong></p>
 <ol>
@@ -1398,7 +1398,7 @@
 <li><code>Strategy.rsi_threshold_long()</code> — built-in RSI(14) &lt; 30 / &gt; 70 template.</li>
 <li><code>Client.backtest(strategy, df)</code> — sends the data and strategy to the engine.</li>
 <li><code>result.stats["Sharpe"]</code> — one of 120+ metrics in the response.</li>
-<li><code>result.equity.plot()</code> — equity curve as a <code>pd.Series</code> indexed by datetime.</li>
+<li><code>result.strategy_equity.plot()</code> — equity curve as a <code>pd.Series</code> indexed by datetime.</li>
 </ol>
 <p>See <a href="../../concepts/result-anatomy/">Result anatomy</a> for the full result shape.</p>
 

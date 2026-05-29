@@ -1174,10 +1174,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#backtest360.Result.equity" class="md-nav__link">
+  <a href="#backtest360.Result.benchmark_equity" class="md-nav__link">
     <span class="md-ellipsis">
       
-        equity
+        benchmark_equity
       
     </span>
   </a>
@@ -1222,6 +1222,17 @@
     <span class="md-ellipsis">
       
         stats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backtest360.Result.strategy_equity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        strategy_equity
       
     </span>
   </a>
@@ -1492,10 +1503,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#backtest360.Result.equity" class="md-nav__link">
+  <a href="#backtest360.Result.benchmark_equity" class="md-nav__link">
     <span class="md-ellipsis">
       
-        equity
+        benchmark_equity
       
     </span>
   </a>
@@ -1540,6 +1551,17 @@
     <span class="md-ellipsis">
       
         stats
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#backtest360.Result.strategy_equity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        strategy_equity
       
     </span>
   </a>
@@ -1635,17 +1657,33 @@
             </td>
           </tr>
           <tr class="doc-section-item">
-            <td><code><a class="autorefs autorefs-internal" title="equity
+            <td><code><a class="autorefs autorefs-internal" title="strategy_equity
 
   
       property
-   (backtest360.Result.equity)" href="#backtest360.Result.equity">equity</a></code></td>
+   (backtest360.Result.strategy_equity)" href="#backtest360.Result.strategy_equity">strategy_equity</a></code></td>
             <td>
                   <code><span title="pandas.Series">Series</span></code>
             </td>
             <td>
               <div class="doc-md-description">
-                <p>Equity curve as a <code>pd.Series</code> indexed by datetime.</p>
+                <p>Strategy equity curve as a <code>pd.Series</code> indexed by datetime.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><a class="autorefs autorefs-internal" title="benchmark_equity
+
+  
+      property
+   (backtest360.Result.benchmark_equity)" href="#backtest360.Result.benchmark_equity">benchmark_equity</a></code></td>
+            <td>
+                  <code><span title="pandas.Series">Series</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Benchmark equity curve as a <code>pd.Series</code> indexed by datetime.
+Empty Series when no benchmark was supplied in the request.</p>
               </div>
             </td>
           </tr>
@@ -1703,9 +1741,10 @@
   <blockquote>
 <blockquote>
 <blockquote>
-<p>result = client.backtest(strategy, df)
+<p>result = client.backtest(strategy, df, benchmark=benchmark_df)
 print(result.stats["Sharpe"])
-result.equity.plot(title="Equity curve")
+ax = result.strategy_equity.plot(title="Strategy vs Benchmark", label="Strategy")
+result.benchmark_equity.plot(ax=ax, label="Benchmark", linestyle="--")
 for trade in result.trades[:5]:
 ...     print(trade["entry_date"], trade["return_net"])</p>
 </blockquote>
@@ -1734,19 +1773,20 @@ for trade in result.trades[:5]:
 
 
 
-<h2 id="backtest360.Result.equity" class="doc doc-heading">
-            <code class="highlight language-python"><span class="n">equity</span></code>
+<h2 id="backtest360.Result.benchmark_equity" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">benchmark_equity</span></code>
 
   <span class="doc doc-labels">
       <small class="doc doc-label doc-label-property"><code>property</code></small>
   </span>
 
-<a href="#backtest360.Result.equity" class="headerlink" title="Permanent link">&para;</a></h2>
+<a href="#backtest360.Result.benchmark_equity" class="headerlink" title="Permanent link">&para;</a></h2>
 
 
     <div class="doc doc-contents ">
 
-        <p>Equity curve as a <code>pd.Series</code> indexed by datetime.</p>
+        <p>Benchmark equity curve as a <code>pd.Series</code> indexed by datetime.</p>
+<p>Empty Series when no benchmark was supplied in the request.</p>
 
     </div>
 
@@ -1835,6 +1875,28 @@ for trade in result.trades[:5]:
     <div class="doc doc-contents ">
 
         <p>Performance statistics dict (120+ metrics).</p>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h2 id="backtest360.Result.strategy_equity" class="doc doc-heading">
+            <code class="highlight language-python"><span class="n">strategy_equity</span></code>
+
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#backtest360.Result.strategy_equity" class="headerlink" title="Permanent link">&para;</a></h2>
+
+
+    <div class="doc doc-contents ">
+
+        <p>Strategy equity curve as a <code>pd.Series</code> indexed by datetime.</p>
 
     </div>
 
