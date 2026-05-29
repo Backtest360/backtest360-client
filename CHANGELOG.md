@@ -23,18 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Breaking
 
-- `Execution.fill` renamed to `Execution.entry_fill` and `Execution.exit_fill`
-  (two independent fields). The engine always accepted them independently; the
-  single `fill` field hid that degree of freedom. Update any code passing
-  `Execution(fill=...)` to `Execution(entry_fill=..., exit_fill=...)`.
-- `Risk.stop` vocab now matches the engine exactly: `"fixed"`, `"trailing"`,
+- `Execution.fill` replaced by `Execution.entry_fill` and `Execution.exit_fill`
+  (two independent fields). Update any code passing `Execution(fill=...)` to
+  `Execution(entry_fill=..., exit_fill=...)`.
+- `Risk.stop` vocab updated to match the engine: `"fixed"`, `"trailing"`,
   `"atr"`, `"trailing_atr"`. Previous values `"fixed_pct"`, `"trailing_pct"`,
-  `"fixed_atr"` were never accepted by the engine and have been removed.
+  `"fixed_atr"` have been removed.
 - `Risk.reentry` changed from `bool` to `str`. Valid values:
-  `"immediate"` (default), `"next_signal"`, `"cooldown"`. The previous
-  `bool` was never valid on the wire and would 422 whenever a stop was set.
-- `Sizing.leverage_limit` default changed from `1.0` to `None` (no cap). The
-  old default silently capped positions to ≤1.0× leverage.
+  `"immediate"` (default), `"next_signal"`, `"cooldown"`.
+- `Sizing.leverage_limit` default changed from `1.0` to `None` (no cap).
 
 ---
 
