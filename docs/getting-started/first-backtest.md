@@ -12,7 +12,7 @@ df.columns = df.columns.str.lower()
 
 result = Client(api_key="b360_live_...").backtest(Strategy.rsi_threshold_long(), df)
 print(result.stats["Sharpe"])
-result.equity.plot(title="Equity curve")
+result.strategy_equity.plot(title="Equity curve")
 ```
 
 **Line by line:**
@@ -22,6 +22,6 @@ result.equity.plot(title="Equity curve")
 3. `Strategy.rsi_threshold_long()` — built-in RSI(14) < 30 / > 70 template.
 4. `Client.backtest(strategy, df)` — sends the data and strategy to the engine.
 5. `result.stats["Sharpe"]` — one of 120+ metrics in the response.
-6. `result.equity.plot()` — equity curve as a `pd.Series` indexed by datetime.
+6. `result.strategy_equity.plot()` — equity curve as a `pd.Series` indexed by datetime.
 
 See [Result anatomy](../concepts/result-anatomy.md) for the full result shape.

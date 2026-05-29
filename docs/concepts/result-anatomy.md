@@ -33,15 +33,18 @@ A `list` of trade dicts. Each dict has:
 - `exit_reason` — `"exit_signal"`, `"stop_loss"`, `"max_drawdown"`, etc.
 - `cumulative_pnl` — running sum of `return_net` across all trades to this point
 
-## `result.equity` / `result.returns` / `result.signals`
+## `result.strategy_equity` / `result.benchmark_equity` / `result.returns` / `result.signals`
 
-All three are `pd.Series` indexed by `datetime64`:
+All are `pd.Series` indexed by `datetime64`:
 
 ```python
-result.equity.plot(title="Equity curve")          # starts at 1.0
-result.returns.cumsum().plot(title="Cumulative")  # log-returns
-result.signals.value_counts()                     # {-1, 0, 1} distribution
+ax = result.strategy_equity.plot(title="Equity curve")   # starts at 1.0
+result.benchmark_equity.plot(ax=ax, linestyle="--")       # present when benchmark was supplied
+result.returns.cumsum().plot(title="Cumulative")          # log-returns
+result.signals.value_counts()                             # {-1, 0, 1} distribution
 ```
+
+`benchmark_equity` is an empty Series when no `benchmark` was passed to `backtest()` — safe to plot unconditionally.
 
 ## `result.raw`
 

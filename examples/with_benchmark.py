@@ -36,3 +36,10 @@ print("Alpha:", result.stats.get("Alpha"))
 print("Beta:", result.stats.get("Beta"))
 print("Up Capture:", result.stats.get("Up Capture"))
 print("Down Capture:", result.stats.get("Down Capture"))
+
+import matplotlib.pyplot as plt
+ax = result.strategy_equity.plot(label="Strategy")
+result.benchmark_equity.plot(ax=ax, label="SPY (buy & hold)", linestyle="--")
+ax.legend()
+plt.tight_layout()
+plt.show()

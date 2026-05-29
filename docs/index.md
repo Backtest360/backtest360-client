@@ -14,7 +14,7 @@ df.columns = df.columns.str.lower()
 
 result = Client(api_key="b360_live_...").backtest(Strategy.rsi_threshold_long(), df)
 print(result.stats["Sharpe"])
-result.equity.plot(title="Equity curve")
+result.strategy_equity.plot(title="Equity curve")
 ```
 
 ## Install

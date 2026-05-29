@@ -43,6 +43,6 @@ print("CAGR:", result.stats.get("CAGR"))
 print("Max Drawdown:", result.stats.get("Max Drawdown"))
 print(f"Trades: {len(result.trades)}")
 
-result.equity.plot(title="BTC RSI threshold — equity curve")
+result.strategy_equity.plot(title="BTC RSI threshold — equity curve")
 plt.tight_layout()
 plt.show()
