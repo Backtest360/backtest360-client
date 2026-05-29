@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.1] — 2026-05-29
+
+### Added
+
+- `Result.benchmark_equity` — benchmark equity curve as a `pd.Series`, present when `benchmark=` was supplied to `backtest()`. Empty Series otherwise, safe to plot unconditionally.
+
+### Changed
+
+- `Result.equity` renamed to `Result.strategy_equity` to match the engine wire format (`series.strategy_equity`). Update any code using `result.equity` to `result.strategy_equity`.
+
+---
+
 ## [0.2.0] — 2026-05-29
 
 ### Added

@@ -388,10 +388,11 @@ def test_list_strategies_correct_path():
 _FIXTURE_RESULT = {
     "stats": {"Sharpe": 1.42, "CAGR": 0.089},
     "series": {
-        "dates":   ["2020-01-02", "2020-01-03", "2020-01-04"],
-        "equity":  [1.0, 1.01, 1.02],
-        "returns": [0.0, 0.01, 0.01],
-        "signals": [0, 1, 1],
+        "dates":            ["2020-01-02", "2020-01-03", "2020-01-04"],
+        "strategy_equity":  [1.0, 1.01, 1.02],
+        "benchmark_equity": [1.0, 1.005, 1.015],
+        "returns":          [0.0, 0.01, 0.01],
+        "signals":          [0, 1, 1],
     },
     "trades": [
         {"entry_date": "2020-01-03", "exit_date": "2020-01-04",
@@ -414,19 +415,33 @@ def test_result_trades():
     assert r.trades[0]["return_net"] == 0.01
 
 
-def test_result_equity_is_series():
+def test_result_strategy_equity_is_series():
     r = Result(_FIXTURE_RESULT)
-    eq = r.equity
+    eq = r.strategy_equity
     assert isinstance(eq, pd.Series)
     assert len(eq) == 3
     assert eq.iloc[0] == 1.0
     assert eq.iloc[-1] == 1.02
-    assert eq.name == "equity"
+    assert eq.name == "strategy_equity"
 
 
-def test_result_equity_datetime_index():
+def test_result_strategy_equity_datetime_index():
     r = Result(_FIXTURE_RESULT)
-    assert r.equity.index.dtype == "datetime64[ns]"
+    assert r.strategy_equity.index.dtype == "datetime64[ns]"
+
+
+def test_result_benchmark_equity_is_series():
+    r = Result(_FIXTURE_RESULT)
+    bm = r.benchmark_equity
+    assert isinstance(bm, pd.Series)
+    assert len(bm) == 3
+    assert bm.iloc[0] == 1.0
+    assert bm.name == "benchmark_equity"
+
+
+def test_result_benchmark_equity_empty_when_absent():
+    r = Result({"stats": {}, "series": {"dates": ["2020-01-02"], "strategy_equity": [1.0]}, "trades": []})
+    assert r.benchmark_equity.empty
 
 
 def test_result_returns_is_series():
@@ -453,7 +468,8 @@ def test_result_raw():
 
 def test_result_empty_series_fields():
     r = Result({"stats": {}, "trades": []})
-    assert r.equity.empty
+    assert r.strategy_equity.empty
+    assert r.benchmark_equity.empty
     assert r.returns.empty
     assert r.signals.empty
 
@@ -694,7 +710,7 @@ def _backtest_response(sharpe=1.42):
             "stats": {"Sharpe": sharpe},
             "series": {
                 "dates": ["2020-01-02", "2020-01-03"],
-                "equity": [1.0, 1.01],
+                "strategy_equity": [1.0, 1.01],
                 "returns": [0.0, 0.01],
                 "signals": [0, 1],
             },

@@ -30,8 +30,8 @@ result_mom = client.backtest(Strategy.momentum_6m_long(), df)
 
 fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
 
-result_rsi.equity.plot(ax=axes[0], title="RSI Mean Reversion", color="steelblue")
-result_mom.equity.plot(ax=axes[1], title="6-Month Momentum", color="darkorange")
+result_rsi.strategy_equity.plot(ax=axes[0], title="RSI Mean Reversion", color="steelblue")
+result_mom.strategy_equity.plot(ax=axes[1], title="6-Month Momentum", color="darkorange")
 
 for ax in axes:
     ax.set_ylabel("Equity")

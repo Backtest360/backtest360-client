@@ -85,15 +85,18 @@ class Result:
         stats: Full statistics dict — 120+ metrics keyed by metric name.
         trades: List of trade dicts, each with ``entry_date``, ``exit_date``,
             ``direction``, ``return_net``, etc.
-        equity: Equity curve as a ``pd.Series`` indexed by datetime.
+        strategy_equity: Strategy equity curve as a ``pd.Series`` indexed by datetime.
+        benchmark_equity: Benchmark equity curve as a ``pd.Series`` indexed by datetime.
+            Empty Series when no benchmark was supplied in the request.
         returns: Net-of-cost log-return series indexed by datetime.
         signals: Signal series (``{-1, 0, 1}``) indexed by datetime.
         raw: The full ``result`` dict — everything the engine returned.
 
     Example:
-        >>> result = client.backtest(strategy, df)
+        >>> result = client.backtest(strategy, df, benchmark=benchmark_df)
         >>> print(result.stats["Sharpe"])
-        >>> result.equity.plot(title="Equity curve")
+        >>> ax = result.strategy_equity.plot(title="Strategy vs Benchmark", label="Strategy")
+        >>> result.benchmark_equity.plot(ax=ax, label="Benchmark", linestyle="--")
         >>> for trade in result.trades[:5]:
         ...     print(trade["entry_date"], trade["return_net"])
     """
@@ -112,13 +115,29 @@ class Result:
         return self._data.get("trades", [])
 
     @property
-    def equity(self) -> pd.Series:
-        """Equity curve as a ``pd.Series`` indexed by datetime."""
+    def strategy_equity(self) -> pd.Series:
+        """Strategy equity curve as a ``pd.Series`` indexed by datetime."""
         series = self._data.get("series", {})
         return pd.Series(
-            series.get("equity", []),
+            series.get("strategy_equity", []),
             index=pd.to_datetime(series.get("dates", [])),
-            name="equity",
+            name="strategy_equity",
+        )
+
+    @property
+    def benchmark_equity(self) -> pd.Series:
+        """Benchmark equity curve as a ``pd.Series`` indexed by datetime.
+
+        Empty Series when no benchmark was supplied in the request.
+        """
+        series = self._data.get("series", {})
+        vals = series.get("benchmark_equity")
+        if not vals:
+            return pd.Series([], dtype=float, name="benchmark_equity")
+        return pd.Series(
+            vals,
+            index=pd.to_datetime(series.get("dates", [])),
+            name="benchmark_equity",
         )
 
     @property
